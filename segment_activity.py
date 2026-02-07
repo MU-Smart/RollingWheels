@@ -67,9 +67,9 @@ def process_root_directory(
 
 if __name__ == "__main__":
     process_root_directory(
-        place="Basteistrabe",
-        input_root="./Dresden-July15-18",
-        output_root="./splitted/Dresden-July15-18",
-        min_target_timestamp="1531904720000.0",
-        max_target_timestamp="1531915929000.0"
+        place="Mirabellplatz",
+        input_root="./paris",
+        output_root="./splitted/Austria",
+        min_target_timestamp="1532335329000.0",
+        max_target_timestamp="1532349583000.0"
     )
