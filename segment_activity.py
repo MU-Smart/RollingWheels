@@ -1,32 +1,75 @@
 import pandas as pd
-import numpy as np
+from pathlib import Path
 
-# Load your data
-df = pd.read_csv('your_file.csv')
+def filter_csv_by_timestamp(
+    input_csv: Path,
+    output_csv: Path,
+    min_ts,
+    max_ts
+):
+    try:
+        df = pd.read_csv(input_csv)
 
-# 1. Calculate the Magnitude of acceleration to simplify the 3 axes into 1
-df['magnitude'] = np.sqrt(df['attr_x']**2 + df['attr_y']**2 + df['attr_z']**2)
+        # Skip files without attr_time
+        if 'attr_time' not in df.columns:
+            return
 
-# 2. Calculate rolling standard deviation (window size depends on your sampling rate)
-# A window of 50-100 points usually works well to smooth out noise
-df['rolling_std'] = df['magnitude'].rolling(window=100, center=True).std()
+        # Convert timestamp
+        df['attr_time'] = pd.to_datetime(df['attr_time'].astype(float), unit='ms')
 
-# 3. Define a threshold (0.5 is a common starting point for m/s^2)
-# Any segment with std > 0.5 is considered "Moving"
-df['is_moving'] = df['rolling_std'] > 0.5
+        filtered = df[
+            (df['attr_time'] >= min_ts) &
+            (df['attr_time'] <= max_ts)
+        ].copy()
 
-# 4. Find the start and end of each moving segment
-df['group'] = (df['is_moving'] != df['is_moving'].shift()).cumsum()
-moving_segments = df[df['is_moving'] == True].groupby('group')['attr_time'].agg(['min', 'max', 'count'])
+        if filtered.empty:
+            print(f"No data in range for {input_csv}")
+            return
 
-# 5. Filter for segments that are long enough to be real activity (e.g., > 1 second)
-# Assuming time is in milliseconds, count depends on frequency
-significant_segments = moving_segments[moving_segments['count'] > 500].sort_values(by='min')
+        filtered['attr_time'] = (filtered['attr_time'].astype('int64') // 10**6)
 
-print("Detected Activity Windows:")
-for i, (idx, row) in enumerate(significant_segments.iterrows(), 1):
-    print(f"Part {i}: Start = {row['min']}, End = {row['max']}")
-    
-    # Optional: Save each part to a new CSV
-    # part_df = df[(df['attr_time'] >= row['min']) & (df['attr_time'] <= row['max'])]
-    # part_df.to_csv(f'activity_part_{i}.csv', index=False)
+        # Ensure output directory exists
+        output_csv.parent.mkdir(parents=True, exist_ok=True)
+
+        filtered.to_csv(output_csv, index=False)
+        print(f"Saved: {output_csv}")
+
+    except Exception as e:
+        print(f"Skipped {input_csv}: {e}")
+
+
+def process_root_directory(
+    place,
+    input_root,
+    output_root,
+    min_target_timestamp,
+    max_target_timestamp
+):
+    input_root = Path(input_root)
+    output_root = Path(output_root)
+
+    min_ts = pd.to_datetime(float(min_target_timestamp), unit='ms')
+    max_ts = pd.to_datetime(float(max_target_timestamp), unit='ms')
+
+    for csv_file in input_root.rglob("*.csv"):
+        # Preserve relative path
+        relative_path = csv_file.relative_to(input_root)
+        
+        output_csv = output_root / relative_path.parent / f"{place}_{relative_path.name}"
+
+        filter_csv_by_timestamp(
+            input_csv=csv_file,
+            output_csv=output_csv,
+            min_ts=min_ts,
+            max_ts=max_ts
+        )
+
+
+if __name__ == "__main__":
+    process_root_directory(
+        place="Basteistrabe",
+        input_root="./Dresden-July15-18",
+        output_root="./splitted/Dresden-July15-18",
+        min_target_timestamp="1531904720000.0",
+        max_target_timestamp="1531915929000.0"
+    )
