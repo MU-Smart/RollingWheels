@@ -54,7 +54,7 @@ log = logging.getLogger(__name__)
 
 # ── Config ────────────────────────────────────────────────────────────────────
 CONFIG = {
-    "data_dir"      : Path("../Datasets/Processed_Data/Labeled_Data_Without_GPS"),
+    "data_dir"      : Path(__file__).parent.parent.parent / "Datasets/Processed_Data/Labeled_Data_Without_GPS",
     "window_size"   : 1024,
     "overlap"       : 0.5,
     "acc_epochs"    : 100,
@@ -132,8 +132,8 @@ def stratified_split(windows: np.ndarray, labels: np.ndarray, test_size: float, 
         te_i.extend(idx[:n])
         tr_i.extend(idx[n:])
         log.info("  Surface %2d: %5d train  %4d test", cls, len(idx) - n, n)
-    tr_i = np.array(tr_i)
-    te_i = np.array(te_i)
+    tr_i = np.array(tr_i, dtype=int)
+    te_i = np.array(te_i, dtype=int)
     log.info("Split → train=%d  test=%d", len(tr_i), len(te_i))
     return windows[tr_i], labels[tr_i], windows[te_i], labels[te_i]
 
