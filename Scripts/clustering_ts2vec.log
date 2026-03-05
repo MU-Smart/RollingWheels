@@ -1,0 +1,19 @@
+2026-03-05 14:15:08,970  INFO  === Road Surface Clustering — TS2Vec ===
+2026-03-05 14:15:08,970  INFO  Config: {'data_dir': PosixPath('../Datasets/Processed_Data/Labeled_Data_Without_GPS'), 'window_size': 1024, 'overlap': 0.5, 'acc_epochs': 120, 'output_dims': 128}
+2026-03-05 14:15:09,086  INFO  Using device: mps
+2026-03-05 14:15:09,093  INFO  Surface-ID distribution:
+surface_id
+10    406
+9     403
+8      98
+7      96
+6      90
+5      66
+2      57
+3      40
+4      30
+11     28
+12     20
+1      10
+2026-03-05 14:15:11,933  INFO  Extracted 7962 accelerometer windows.
+2026-03-05 14:15:11,999  INFO  Training TS2Vec for Accelerometer — shape=(7962, 1024, 3), epochs=120
