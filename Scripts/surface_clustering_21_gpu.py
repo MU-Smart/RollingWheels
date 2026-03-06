@@ -366,19 +366,19 @@ class VibClustNet(nn.Module):
 # ── Multi-depth reconstruction loss ───────────────────────────────────────────
 def multi_rec_loss(x_orig, recon, enc_inter, dec_inter):
     """
-    MSE at 3 levels (signal + two intermediate pairs), each normalised by
-    its dimensionality, then summed with 0.5 weight on intermediates.
+    MSE at 3 levels (signal + two intermediate pairs), summed with 0.5 weight
+    on intermediates.  F.mse_loss already returns an element-wise mean, so no
+    extra division by dimensionality is needed.
     """
     if x_orig.shape[1] != 3:
         x_orig = x_orig.permute(0, 2, 1)
-    T = x_orig.shape[-1]
     # L1: main reconstruction
-    l1 = F.mse_loss(recon, x_orig) / (3 * T)
-    # L2: encoder bottleneck ↔ decoder upsample output  (both 80-dim, pooled)
-    l2 = F.mse_loss(enc_inter["after_mstcb3"], dec_inter["d_after_upsample"]) / 80
-    # L3: encoder stage-1 mean (avg 3 axes → 80-dim) ↔ decoder conv1 output
-    enc_s1 = enc_inter["after_mstcb12"].mean(dim=1)   # (B, 80)
-    l3 = F.mse_loss(enc_s1, dec_inter["d_after_conv1"]) / 80
+    l1 = F.mse_loss(recon, x_orig)
+    # L2: encoder bottleneck ↔ decoder upsample output  (both 160-dim, pooled)
+    l2 = F.mse_loss(enc_inter["after_mstcb3"], dec_inter["d_after_upsample"])
+    # L3: encoder stage-1 mean (avg 3 axes → 160-dim) ↔ decoder conv1 output
+    enc_s1 = enc_inter["after_mstcb12"].mean(dim=1)   # (B, 160)
+    l3 = F.mse_loss(enc_s1, dec_inter["d_after_conv1"])
     return l1 + 0.5 * l2 + 0.5 * l3
 
 
