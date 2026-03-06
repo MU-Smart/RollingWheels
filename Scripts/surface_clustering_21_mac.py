@@ -63,7 +63,7 @@ CONFIG = {
     "vcn_batch_size"     : 64,   # larger batches improve MPS throughput
     "vcn_lr"             : 1e-3,
     "vcn_patience"       : 50,
-    "vcn_embedding_dim"  : 512,
+    "vcn_embedding_dim"  : 128,
     "vcn_checkpoint"     : Path("vibclustnet_best.pth"),
 }
 
@@ -303,35 +303,35 @@ class VibClustNet(nn.Module):
         super().__init__()
         self.T = T
         # Shared per-axis MSTCB — same nn.Module instance for all 3 axes
-        self.mstcb1 = MSTCB(1,   160)
-        self.mstcb2 = MSTCB(160, 160)
+        self.mstcb1 = MSTCB(1,  80)
+        self.mstcb2 = MSTCB(80, 80)
         # Cross-axis + frequency attention
-        self.caim   = CAIM(160, num_heads=4)
-        self.faag   = FAAG(480, T)        # 3 axes × 160ch concatenated
+        self.caim   = CAIM(80, num_heads=4)
+        self.faag   = FAAG(240, T)        # 3 axes × 80ch concatenated
         # Third MSTCB after attention
-        self.mstcb3 = MSTCB(480, 160)
+        self.mstcb3 = MSTCB(240, 80)
         # Encoder head
-        self.enc_head = nn.Linear(160, emb_dim)
+        self.enc_head = nn.Linear(80, emb_dim)
         # Decoder (mirror, simplified)
-        self.dec_linear   = nn.Linear(emb_dim, 160)
+        self.dec_linear   = nn.Linear(emb_dim, 80)
         self.dec_upsample = nn.Upsample(size=T, mode="linear", align_corners=False)
-        self.dec_conv1    = nn.Sequential(nn.Conv1d(160, 160, 3, padding="same"), nn.ReLU())
-        self.dec_conv2    = nn.Sequential(nn.Conv1d(160,  64, 3, padding="same"), nn.ReLU())
-        self.dec_out      = nn.Conv1d(64, 3, 1)
+        self.dec_conv1    = nn.Sequential(nn.Conv1d(80, 80, 3, padding="same"), nn.ReLU())
+        self.dec_conv2    = nn.Sequential(nn.Conv1d(80, 32, 3, padding="same"), nn.ReLU())
+        self.dec_out      = nn.Conv1d(32, 3, 1)
 
     def _encode(self, x):
         """x must be (B, 3, T). Returns emb (B, emb_dim) + enc_inter dict."""
         axes = [x[:, i:i+1, :] for i in range(3)]              # 3 × (B, 1, T)
-        axes = [self.mstcb2(self.mstcb1(a)) for a in axes]     # shared weights; 3 × (B, 160, T)
-        attended, caim_w = self.caim(axes)                      # 3 × (B, 160, T), (B, 3, 3)
-        cat              = torch.cat(attended, dim=1)           # (B, 480, T)
-        fout, t_attn, f_attn = self.faag(cat)                   # (B, 480, T)
-        after3           = self.mstcb3(fout)                    # (B, 160, T)
-        pooled = after3.mean(dim=-1)                            # (B, 160)
+        axes = [self.mstcb2(self.mstcb1(a)) for a in axes]     # shared weights; 3 × (B, 80, T)
+        attended, caim_w = self.caim(axes)                      # 3 × (B, 80, T), (B, 3, 3)
+        cat              = torch.cat(attended, dim=1)           # (B, 240, T)
+        fout, t_attn, f_attn = self.faag(cat)                   # (B, 240, T)
+        after3           = self.mstcb3(fout)                    # (B, 80, T)
+        pooled = after3.mean(dim=-1)                            # (B, 80)
         emb    = self.enc_head(pooled)                          # (B, emb_dim)
         enc_inter = {
-            "after_mstcb12": torch.stack([a.mean(-1) for a in axes], dim=1),  # (B, 3, 160)
-            "after_mstcb3" : pooled,                                           # (B, 160)
+            "after_mstcb12": torch.stack([a.mean(-1) for a in axes], dim=1),  # (B, 3, 80)
+            "after_mstcb3" : pooled,                                           # (B, 80)
             "caim_weights" : caim_w,                                           # (B, 3, 3)
             "t_attn"       : t_attn,                                           # (B, 240, T)
             "f_attn"       : f_attn,                                           # (B, 240, T)
@@ -344,7 +344,7 @@ class VibClustNet(nn.Module):
         h  = self.dec_upsample(h)                 # (B, 80, T)
         d1 = self.dec_conv1(h)                    # (B, 80, T)
         d2 = self.dec_conv2(d1)                   # (B, 32, T)
-        recon = self.dec_out(d2)                  # (B, 3, T)
+        recon = self.dec_out(d2)                  # (B, 3,  T)
         dec_inter = {
             "d_after_upsample": h.mean(dim=-1),    # (B, 80) — mirrors after_mstcb3
             "d_after_conv1"   : d1.mean(dim=-1),   # (B, 80) — mirrors after_mstcb12 mean
@@ -376,10 +376,10 @@ def multi_rec_loss(x_orig, recon, enc_inter, dec_inter):
         x_orig = x_orig.permute(0, 2, 1)
     # L1: main reconstruction — F.mse_loss already averages over all elements
     l1 = F.mse_loss(recon, x_orig)
-    # L2: encoder bottleneck ↔ decoder upsample output  (both 160-dim, pooled)
+    # L2: encoder bottleneck ↔ decoder upsample output  (both 80-dim, pooled)
     l2 = F.mse_loss(enc_inter["after_mstcb3"], dec_inter["d_after_upsample"])
-    # L3: encoder stage-1 mean (avg 3 axes → 160-dim) ↔ decoder conv1 output
-    enc_s1 = enc_inter["after_mstcb12"].mean(dim=1)   # (B, 160)
+    # L3: encoder stage-1 mean (avg 3 axes → 80-dim) ↔ decoder conv1 output
+    enc_s1 = enc_inter["after_mstcb12"].mean(dim=1)   # (B, 80)
     l3 = F.mse_loss(enc_s1, dec_inter["d_after_conv1"])
     return l1 + 0.5 * l2 + 0.5 * l3
 

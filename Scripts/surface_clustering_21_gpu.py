@@ -60,7 +60,7 @@ CONFIG = {
     "vcn_batch_size"     : 32,
     "vcn_lr"             : 1e-3,
     "vcn_patience"       : 50,
-    "vcn_embedding_dim"  : 512,
+    "vcn_embedding_dim"  : 256,
     "vcn_checkpoint"     : Path("vibclustnet_best.pth"),
 }
 
@@ -397,7 +397,7 @@ class WindowedDataset(torch.utils.data.Dataset):
         return self.X[idx], self.y[idx]
 
 
-# ── Load windowed pkl ──────────────────────────────────────────────────────────
+# ── Load windowed csv ──────────────────────────────────────────────────────────
 def load_windowed_data(cfg):
     """
     Loads the CSV file produced by FeatureExtractor notebook.
@@ -412,7 +412,7 @@ def load_windowed_data(cfg):
 
     # ── Group by window_id → arr (N, 3, T) + labels ───────────────────────────
     windows, labels = [], []
-    for wid, group in raw.groupby("window_id", sort=True):
+    for _, group in raw.groupby("window_id", sort=True):
         xyz = group[["valueX", "valueY", "valueZ"]].to_numpy(dtype=np.float32).T  # (3, T)
         sid = int(group["surface_id"].iloc[0])
 
