@@ -15,7 +15,6 @@ Steps
 7. VibClustNet diagnostic plots (attention, CAIM, reconstruction)
 """
 
-import pickle
 import re
 import numpy as np
 import pandas as pd
@@ -54,7 +53,7 @@ CONFIG = {
     "pca_variance"       : 0.95,
 
     # raw windowed data
-    "windowed_pkl"       : Path("../Datasets/ExtractedFeatures/labeled_accelerometer_windows.pkl"),
+    "windowed_csv"       : Path("../Datasets/ExtractedFeatures/labeled_accelerometer_windows.csv"),
 
     # VibClustNet hyper-parameters
     "vcn_epochs"         : 150,
@@ -401,31 +400,21 @@ class WindowedDataset(torch.utils.data.Dataset):
 # ── Load windowed pkl ──────────────────────────────────────────────────────────
 def load_windowed_data(cfg):
     """
-    Loads the pickle file produced by FeatureExtractor notebook.
-    Handles: list-of-DataFrames, ndarray (N,T,3) or (N,3,T), dict.
-    Z-normalises per window per channel, remaps labels, stratified splits.
+    Loads the CSV file produced by FeatureExtractor notebook.
+    Columns: valueX, valueY, valueZ, surface_id, window_id.
+    Groups by window_id, Z-normalises per window per channel, remaps labels, stratified splits.
     Returns tr_X, tr_y, te_X, te_y  (float32 (N,3,T)),  X_u (unlabeled).
     """
-    pkl_path = cfg["windowed_pkl"]
-    print(f"  Loading: {pkl_path}")
-    with open(pkl_path, "rb") as f:
-        raw = pickle.load(f)
-    print(f"  Type: {type(raw).__name__}", end="")
+    csv_path = cfg["windowed_csv"]
+    print(f"  Loading: {csv_path}")
+    raw = pd.read_csv(csv_path)
+    print(f"  Rows: {len(raw)}  Windows: {raw['window_id'].nunique()}")
 
-    # ── Normalise payload → arr (N, 3, T) + labels ────────────────────────────
-    
-    # List of DataFrames — columns: valueX, valueY, valueZ, surface_id
-    print(f"  ({len(raw)} windows, items are {type(raw[0]).__name__})")
+    # ── Group by window_id → arr (N, 3, T) + labels ───────────────────────────
     windows, labels = [], []
-    for item in raw:
-        win = item["window"]        # DataFrame
-        xyz = np.stack([
-            np.array(win.iloc[:, i].tolist(), dtype=np.float32)
-            for i in range(3)
-        ], axis=0)  # shape (3, 1024)
-
-        sid = (int(item["surface_id"].iloc[0])
-                if "surface_id" in item.columns else cfg["unlabeled_id"])
+    for wid, group in raw.groupby("window_id", sort=True):
+        xyz = group[["valueX", "valueY", "valueZ"]].to_numpy(dtype=np.float32).T  # (3, T)
+        sid = int(group["surface_id"].iloc[0])
 
         windows.append(xyz)
         labels.append(sid)
