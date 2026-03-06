@@ -436,7 +436,7 @@ def multi_rec_loss(x_orig, recon):
         x_orig = x_orig.permute(0, 2, 1)
     d    = recon - x_orig
     ln2  = torch.tensor(2.0, device=d.device).log()
-    return (torch.logaddexp(d, -d) - ln2).sum()
+    return (torch.logaddexp(d, -d) - ln2).sum() / d.numel()
 
 
 # ── Windowed dataset ───────────────────────────────────────────────────────────
@@ -516,37 +516,48 @@ def train_vibclustnet(model, train_loader, val_loader, cfg, device,
     pat  = 0
     ckpt = cfg["vcn_checkpoint"]
 
+    cls_w = cfg.get("vcn_cls_weight", 0.0)
+
     for ep in range(cfg["vcn_epochs"]):
         # ── Train ────────────────────────────────────────────────────────────
         model.train()
-        tr_loss = 0.0
-        cls_w = cfg.get("vcn_cls_weight", 0.0)
+        tr_rec = tr_cls = 0.0
         for xb, yb in train_loader:
             xb, yb = xb.to(device), yb.to(device)
             opt.zero_grad()
             recon, emb, _, _ = model(xb)
-            loss = multi_rec_loss(xb, recon)
-            # Auxiliary classification loss on labeled samples
+            rec_loss = multi_rec_loss(xb, recon)
+            cls_loss = torch.tensor(0.0, device=xb.device)
             if model.classifier is not None and cls_w > 0:
                 labeled = yb >= 0
                 if labeled.any():
-                    logits = model.classify(emb[labeled])
-                    loss = loss + cls_w * F.cross_entropy(logits, yb[labeled])
+                    logits   = model.classify(emb[labeled])
+                    cls_loss = F.cross_entropy(logits, yb[labeled])
+            loss = rec_loss + cls_w * cls_loss
             loss.backward()
-            nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            nn.utils.clip_grad_norm_(model.parameters(), 5.0)
             opt.step()
-            tr_loss += loss.item()
-        tr_loss /= len(train_loader)
+            tr_rec += rec_loss.item()
+            tr_cls += cls_loss.item()
+        tr_rec /= len(train_loader)
+        tr_cls /= len(train_loader)
 
-        # ── Validate ─────────────────────────────────────────────────────────
+        # ── Validate (reconstruction + classification) ────────────────────────
         model.eval()
-        va_loss = 0.0
+        va_rec = va_cls = 0.0
         with torch.no_grad():
-            for xb, _ in val_loader:
-                xb = xb.to(device)
-                recon, _, _, _ = model(xb)
-                va_loss += multi_rec_loss(xb, recon).item()
-        va_loss /= len(val_loader)
+            for xb, yb in val_loader:
+                xb, yb = xb.to(device), yb.to(device)
+                recon, emb, _, _ = model(xb)
+                va_rec += multi_rec_loss(xb, recon).item()
+                if model.classifier is not None and cls_w > 0:
+                    labeled = yb >= 0
+                    if labeled.any():
+                        logits   = model.classify(emb[labeled])
+                        va_cls  += F.cross_entropy(logits, yb[labeled]).item()
+        va_rec /= len(val_loader)
+        va_cls /= len(val_loader)
+        va_loss = va_rec + cls_w * va_cls
 
         sched.step(va_loss)
         imp  = va_loss < best - 1e-6
@@ -555,8 +566,9 @@ def train_vibclustnet(model, train_loader, val_loader, cfg, device,
             torch.save(model.state_dict(), ckpt)
         lr_now = opt.param_groups[0]["lr"]
         logger.info(f"  [VCN] {ep+1:3d}/{cfg['vcn_epochs']}  "
-                    f"train={tr_loss:.6f}  val={va_loss:.6f}  lr={lr_now:.2e}"
-                    + (" *" if imp else ""))
+                    f"rec={tr_rec:.4f}  cls={tr_cls:.4f}  "
+                    f"val_rec={va_rec:.4f}  val_cls={va_cls:.4f}  "
+                    f"lr={lr_now:.2e}" + (" *" if imp else ""))
 
         # ── NMI probe every 10 epochs ─────────────────────────────────────────
         if (ep + 1) % 10 == 0 and X_labeled is not None and len(X_labeled) >= 2:
