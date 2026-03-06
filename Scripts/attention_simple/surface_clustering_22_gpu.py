@@ -44,7 +44,7 @@ RUN_TS = datetime.now().strftime("%Y%m%d_%H%M%S")
 def setup_logging(log_dir: Path = Path(".")) -> logging.Logger:
     """Set up logger writing to both console and a timestamped log file."""
     log_dir.mkdir(parents=True, exist_ok=True)
-    log_path = log_dir / f"run_{RUN_TS}_21_gpu.log"
+    log_path = log_dir / f"run_{RUN_TS}_22_gpu.log"
 
     fmt = logging.Formatter(
         fmt="%(asctime)s  %(levelname)-8s  %(message)s",
@@ -90,12 +90,13 @@ CONFIG = {
     "windowed_csv"       : Path("../../Datasets/ExtractedFeatures/labeled_accelerometer_raw_windows.csv"),
 
     # VibClustNet hyper-parameters
-    "vcn_epochs"         : 200,
+    "vcn_epochs"         : 150,
     "vcn_batch_size"     : 32,
     "vcn_lr"             : 1e-3,
     "vcn_patience"       : 50,
     "vcn_embedding_dim"  : 128,
     "vcn_checkpoint"     : Path("vibclustnet_best_22.pth"),
+    "vcn_cls_weight"     : 1.0,    # weight for classification auxiliary loss
 
     # Output directories
     "figures_dir"        : Path("figures"),
@@ -333,8 +334,9 @@ class VibClustNet(nn.Module):
     """
     Autoencoder for 3-axis vibration windows (channels-first).
     Input / output: (batch, 3, T)
+    n_classes: if > 0, adds a classification head for auxiliary supervised loss.
     """
-    def __init__(self, T: int, emb_dim: int = 256):
+    def __init__(self, T: int, emb_dim: int = 256, n_classes: int = 0):
         super().__init__()
         self.T = T
         CH = 96                                      # internal channel width
@@ -348,6 +350,15 @@ class VibClustNet(nn.Module):
         self.mstcb3 = MSTCB(3 * CH, CH)
         # Encoder head
         self.enc_head = nn.Linear(CH, emb_dim)
+        # Optional classification head (auxiliary supervised loss)
+        self.classifier = (
+            nn.Sequential(
+                nn.Linear(emb_dim, emb_dim // 2),
+                nn.ReLU(),
+                nn.Dropout(0.3),
+                nn.Linear(emb_dim // 2, n_classes),
+            ) if n_classes > 0 else None
+        )
         # Decoder (mirror, simplified)
         self.dec_linear   = nn.Linear(emb_dim, CH)
         self.dec_upsample = nn.Upsample(size=T, mode="linear", align_corners=False)
@@ -401,19 +412,31 @@ class VibClustNet(nn.Module):
         emb, _ = self._encode(x)
         return F.normalize(emb, dim=-1)
 
+    def classify(self, emb):
+        """Raw logits from the auxiliary classification head."""
+        if self.classifier is None:
+            raise RuntimeError("VibClustNet built without n_classes > 0")
+        return self.classifier(F.normalize(emb, dim=-1))
 
-# ── Multi-depth reconstruction loss ───────────────────────────────────────────
+
+# ── Log-cosh reconstruction loss ──────────────────────────────────────────────
 def multi_rec_loss(x_orig, recon):
     """
-    Pure signal reconstruction loss (MSE).
-    Intermediate losses (L2/L3) were removed: they forced encoder and decoder
-    intermediate representations into the same space despite living in different
-    functional spaces, overwhelming L1 and keeping loss pinned at ~1.0 (the
-    predict-zero baseline for Z-normalised data).
+    Log-cosh reconstruction loss: Σᵢ log(cosh(yᵢ − ŷᵢ))  (sum over all n elements).
+
+    Numerically stable via the identity:
+        log(cosh(d)) = logaddexp(d, −d) − log(2)
+                     = log(eᵈ + e⁻ᵈ) − log(2)
+
+    Behaves like ½d² for small residuals (smooth, like MSE) and like |d| − log2
+    for large residuals (robust, like MAE) — avoids the predict-zero collapse
+    that MSE alone suffers on Z-normalised data.
     """
     if x_orig.shape[1] != 3:
         x_orig = x_orig.permute(0, 2, 1)
-    return F.mse_loss(recon, x_orig)
+    d    = recon - x_orig
+    ln2  = torch.tensor(2.0, device=d.device).log()
+    return (torch.logaddexp(d, -d) - ln2).sum()
 
 
 # ── Windowed dataset ───────────────────────────────────────────────────────────
@@ -497,11 +520,18 @@ def train_vibclustnet(model, train_loader, val_loader, cfg, device,
         # ── Train ────────────────────────────────────────────────────────────
         model.train()
         tr_loss = 0.0
-        for xb, _ in train_loader:
-            xb = xb.to(device)
+        cls_w = cfg.get("vcn_cls_weight", 0.0)
+        for xb, yb in train_loader:
+            xb, yb = xb.to(device), yb.to(device)
             opt.zero_grad()
-            recon, _, _, _ = model(xb)
+            recon, emb, _, _ = model(xb)
             loss = multi_rec_loss(xb, recon)
+            # Auxiliary classification loss on labeled samples
+            if model.classifier is not None and cls_w > 0:
+                labeled = yb >= 0
+                if labeled.any():
+                    logits = model.classify(emb[labeled])
+                    loss = loss + cls_w * F.cross_entropy(logits, yb[labeled])
             loss.backward()
             nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             opt.step()
@@ -585,17 +615,31 @@ class SBScanClustering:
         self._knn_clf        = None
 
     def fit(self, X):
-        k     = self.min_samples
-        nbrs  = NearestNeighbors(n_neighbors=k).fit(X)
+        k        = self.min_samples
+        nbrs     = NearestNeighbors(n_neighbors=k).fit(X)
         dists, _ = nbrs.kneighbors(X)
-        k_dists  = np.sort(dists[:, -1])[::-1]
-        d2       = np.gradient(np.gradient(k_dists))
-        self.eps_ = float(k_dists[np.argmax(np.abs(d2))])
+        k_dists  = np.sort(dists[:, -1])          # ascending
+        n        = len(k_dists)
+        # Knee-point: normalise both axes to [0,1], then max |y - x| gives
+        # the index where the curve deviates most from the diagonal.
+        xs = np.linspace(0.0, 1.0, n)
+        rng_d = k_dists[-1] - k_dists[0]
+        ys = (k_dists - k_dists[0]) / (rng_d + 1e-10)
+        knee_idx  = int(np.argmax(np.abs(ys - xs)))
+        self.eps_ = float(k_dists[knee_idx])
+        if self.eps_ < 1e-6:                       # degenerate: use median
+            self.eps_ = float(np.median(k_dists))
+        logger.info(f"    SBScan auto-eps={self.eps_:.4f}  (knee idx={knee_idx}/{n})")
         db = DBSCAN(eps=self.eps_, min_samples=self.min_samples).fit(X)
         self.labels_ = db.labels_
-        mask = self.labels_ != -1
-        if mask.sum() > 0:
-            self._knn_clf = KNeighborsClassifier(n_neighbors=5).fit(X[mask], self.labels_[mask])
+        mask    = self.labels_ != -1
+        n_valid = int(mask.sum())
+        n_cls   = len(np.unique(self.labels_[mask])) if n_valid > 0 else 0
+        logger.info(f"    SBScan: {n_cls} clusters, {n_valid} non-noise / {n} total")
+        if n_valid > 1 and n_cls > 1:
+            self._knn_clf = KNeighborsClassifier(
+                n_neighbors=min(5, n_valid)
+            ).fit(X[mask], self.labels_[mask])
         return self
 
     def predict(self, X):
@@ -833,7 +877,15 @@ def cluster_all(tr_norm, tr_pca, te_norm, te_pca, k):
     gsa     = GravitationalSearchClustering(n_clusters=k, seed=42).fit(tr_pca)
     rand_c  = RandomClustering(n_clusters=k, seed=42).fit(tr_pca)
 
-    knn_agg = KNeighborsClassifier(n_neighbors=5).fit(tr_norm, agg.labels_)
+    # Agg test prediction: nearest-centroid in cosine space is much more robust
+    # than KNN when Agglomerative produces imbalanced clusters.
+    agg_centroids = np.vstack([tr_norm[agg.labels_ == c].mean(axis=0)
+                               for c in range(k)])
+    agg_centroids = normalize(agg_centroids, norm="l2")
+    te_agg_pred   = np.linalg.norm(
+        te_norm[:, None, :] - agg_centroids[None, :, :], axis=-1
+    ).argmin(axis=1)
+
     tr_pred = {
         "kmeans"     : km.labels_,
         "agg"        : agg.labels_,
@@ -846,7 +898,7 @@ def cluster_all(tr_norm, tr_pca, te_norm, te_pca, k):
     }
     te_pred = {
         "kmeans"     : km.predict(te_pca),
-        "agg"        : knn_agg.predict(te_norm),
+        "agg"        : te_agg_pred,
         "gmm"        : gmm.predict(te_pca),
         "sbscan"     : sbscan.predict(te_pca),
         "pos"        : pos.predict(te_pca),
@@ -1158,7 +1210,10 @@ def main():
                            shuffle=True,  drop_last=True,  num_workers=0)
     va_loader = DataLoader(va_ds, batch_size=CONFIG["vcn_batch_size"],
                            shuffle=False, num_workers=0)
-    model = VibClustNet(T=T, emb_dim=CONFIG["vcn_embedding_dim"]).to(device)
+    # n_classes = max super-class index + 1 (handles non-contiguous indices like type B)
+    n_cls_for_clf = max(SUPER_NAMES.keys()) + 1
+    model = VibClustNet(T=T, emb_dim=CONFIG["vcn_embedding_dim"],
+                        n_classes=n_cls_for_clf).to(device)
     logger.info(f"  Parameters: {sum(p.numel() for p in model.parameters()):,}")
     model = train_vibclustnet(model, tr_loader, va_loader, CONFIG, device,
                               X_labeled=tr_X, y_labeled=tr_y)
