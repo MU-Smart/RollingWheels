@@ -16,10 +16,12 @@ Steps
 """
 
 import re
+import logging
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
+from datetime import datetime
 
 import torch
 import torch.nn as nn
@@ -35,6 +37,38 @@ from sklearn.manifold import TSNE
 from sklearn.metrics import (silhouette_score, davies_bouldin_score,
                              calinski_harabasz_score,
                              adjusted_rand_score, normalized_mutual_info_score)
+
+# ── Logging setup ─────────────────────────────────────────────────────────────
+RUN_TS = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+def setup_logging(log_dir: Path = Path(".")) -> logging.Logger:
+    """Set up logger writing to both console and a timestamped log file."""
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / f"run_{RUN_TS}.log"
+
+    fmt = logging.Formatter(
+        fmt="%(asctime)s  %(levelname)-8s  %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    logger = logging.getLogger("vcn")
+    logger.setLevel(logging.DEBUG)
+
+    # File handler — captures DEBUG and above
+    fh = logging.FileHandler(log_path, encoding="utf-8")
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(fmt)
+
+    # Console handler — INFO and above
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    ch.setFormatter(fmt)
+
+    logger.addHandler(fh)
+    logger.addHandler(ch)
+    logger.info(f"Log file: {log_path.resolve()}")
+    return logger
+
+logger = logging.getLogger("vcn")   # module-level; populated after setup_logging()
 
 # ── Config ───────────────────────────────────────────────────────────────────
 CONFIG = {
@@ -62,6 +96,10 @@ CONFIG = {
     "vcn_patience"       : 50,
     "vcn_embedding_dim"  : 256,
     "vcn_checkpoint"     : Path("vibclustnet_best.pth"),
+
+    # Output directories
+    "figures_dir"        : Path("figures"),
+    "models_dir"         : Path("models"),
 }
 
 # ── Surface name lookup ───────────────────────────────────────────────────────
@@ -75,9 +113,9 @@ def load_surface_names(path):
         name_col = next(c for c in df.columns if "name" in c.lower())
         SURFACE_NAMES = {int(r[id_col]): str(r[name_col]) for _, r in df.iterrows()}
         for sid, name in sorted(SURFACE_NAMES.items()):
-            print(f"    {sid:3d} -> {name}")
+            logger.info(f"    {sid:3d} -> {name}")
     except Exception as e:
-        print(f"  WARNING: {e}")
+        logger.warning(f"  WARNING: {e}")
 
 def sname(sid):
     return SURFACE_NAMES.get(int(sid), f"Surface {sid}")
@@ -209,7 +247,7 @@ def stratified_split(X, y, test_size, seed):
         idx = rng.permutation(idx)
         n   = max(1, int(len(idx) * test_size))
         te_i.extend(idx[:n]);  tr_i.extend(idx[n:])
-        print(f"    {sname(cls):30s}: {len(idx)-n:5d} train  {n:4d} test")
+        logger.info(f"    {sname(cls):30s}: {len(idx)-n:5d} train  {n:4d} test")
     return (X[tr_i], y[tr_i], X[te_i], y[te_i])
 
 # ── Embeddings ────────────────────────────────────────────────────────────────
@@ -407,9 +445,9 @@ def load_windowed_data(cfg):
     Returns tr_X, tr_y, te_X, te_y  (float32 (N,3,T)),  X_u (unlabeled).
     """
     csv_path = cfg["windowed_csv"]
-    print(f"  Loading: {csv_path}")
+    logger.info(f"  Loading: {csv_path}")
     raw = pd.read_csv(csv_path)
-    print(f"  Rows: {len(raw)}  Windows: {raw['window_id'].nunique()}")
+    logger.info(f"  Rows: {len(raw)}  Windows: {raw['window_id'].nunique()}")
 
     # ── Group by window_id → arr (N, 3, T) + labels ───────────────────────────
     windows, labels = [], []
@@ -422,7 +460,7 @@ def load_windowed_data(cfg):
     arr    = np.stack(windows).astype(np.float32)   # (N, 3, T)
     labels = np.array(labels, dtype=int)
 
-    print(f"\n  Windows: {arr.shape}  Labels: {labels.shape}")
+    logger.info(f"\n  Windows: {arr.shape}  Labels: {labels.shape}")
 
     # ── Z-normalise per window per channel ────────────────────────────────────
     mu  = arr.mean(axis=-1, keepdims=True)
@@ -434,11 +472,11 @@ def load_windowed_data(cfg):
     X_l, y_l = arr[~unl_mask], labels[~unl_mask]
     X_u       = arr[unl_mask]
     y_l       = remap_labels(y_l)
-    print(f"  Labeled: {len(X_l)}  Unlabeled: {len(X_u)}")
-    print(f"  Classes: {sorted(np.unique(y_l))}")
+    logger.info(f"  Labeled: {len(X_l)}  Unlabeled: {len(X_u)}")
+    logger.info(f"  Classes: {sorted(np.unique(y_l))}")
 
     # ── Stratified 80/20 split ────────────────────────────────────────────────
-    print("  Stratified split:")
+    logger.info("  Stratified split:")
     tr_X, tr_y, te_X, te_y = stratified_split(X_l, y_l, cfg["test_size"], cfg["seed"])
     return tr_X, tr_y, te_X, te_y, X_u
 
@@ -491,8 +529,9 @@ def train_vibclustnet(model, train_loader, val_loader, cfg, device,
         if imp:
             torch.save(model.state_dict(), ckpt)
         lr_now = opt.param_groups[0]["lr"]
-        print(f"  [VCN] {ep+1:3d}/{cfg['vcn_epochs']}  "
-              f"train={tr_loss:.6f}  val={va_loss:.6f}  lr={lr_now:.2e}" + (" *" if imp else ""))
+        logger.info(f"  [VCN] {ep+1:3d}/{cfg['vcn_epochs']}  "
+                    f"train={tr_loss:.6f}  val={va_loss:.6f}  lr={lr_now:.2e}"
+                    + (" *" if imp else ""))
 
         # ── NMI probe every 10 epochs ─────────────────────────────────────────
         if (ep + 1) % 10 == 0 and X_labeled is not None and len(X_labeled) >= 2:
@@ -504,15 +543,30 @@ def train_vibclustnet(model, train_loader, val_loader, cfg, device,
             k_tmp  = len(np.unique(y_labeled))
             km_tmp = KMeans(n_clusters=k_tmp, random_state=42, n_init=5).fit_predict(embs)
             nmi    = normalized_mutual_info_score(y_labeled, km_tmp)
-            print(f"    NMI (labeled, K={k_tmp}): {nmi:.4f}")
+            logger.info(f"    NMI (labeled, K={k_tmp}): {nmi:.4f}")
 
         if pat >= cfg["vcn_patience"]:
-            print(f"  Early stop at epoch {ep+1}")
+            logger.info(f"  Early stop at epoch {ep+1}")
             break
 
     model.load_state_dict(torch.load(ckpt, map_location=device))
     return model
 
+
+def save_model(model, cfg):
+    """Save full model and state dict with run timestamp."""
+    models_dir = cfg["models_dir"]
+    models_dir.mkdir(parents=True, exist_ok=True)
+
+    sd_path   = models_dir / f"vibclustnet_{RUN_TS}_state_dict.pth"
+    full_path = models_dir / f"vibclustnet_{RUN_TS}_full.pth"
+
+    torch.save(model.state_dict(), sd_path)
+    torch.save(model, full_path)
+
+    logger.info(f"  Model state dict saved: {sd_path.resolve()}")
+    logger.info(f"  Full model saved      : {full_path.resolve()}")
+    return sd_path, full_path
 
 
 # ── Post-processing ───────────────────────────────────────────────────────────
@@ -520,26 +574,30 @@ def pca_reduce(emb_tr, emb_te, variance=0.95):
     n_tr = normalize(emb_tr, norm="l2")
     n_te = normalize(emb_te, norm="l2")
     pca  = PCA(n_components=variance, svd_solver="full").fit(n_tr)
-    print(f"  PCA: {emb_tr.shape[1]}d → {pca.n_components_}d "
-          f"(var={pca.explained_variance_ratio_.sum():.3f})")
+    logger.info(f"  PCA: {emb_tr.shape[1]}d → {pca.n_components_}d "
+                f"(var={pca.explained_variance_ratio_.sum():.3f})")
     return n_tr, pca.transform(n_tr), n_te, pca.transform(n_te), pca
 
 # ── Clustering ────────────────────────────────────────────────────────────────
-def best_k(pca_emb, k_min, k_max):
+def best_k(pca_emb, k_min, k_max, figures_dir: Path):
     scores = {}
     for k in range(k_min, k_max+1):
         lbl = KMeans(n_clusters=k, random_state=42, n_init=20).fit_predict(pca_emb)
         scores[k] = silhouette_score(pca_emb, lbl)
-        print(f"    K={k:2d}  sil={scores[k]:.4f}")
+        logger.info(f"    K={k:2d}  sil={scores[k]:.4f}")
     bk = max(scores, key=scores.get)
-    print(f"  Best K={bk}  sil={scores[bk]:.4f}")
+    logger.info(f"  Best K={bk}  sil={scores[bk]:.4f}")
     # plot
     fig, ax = plt.subplots(figsize=(7, 3))
     ax.plot(list(scores.keys()), list(scores.values()), "o-", color="#457b9d")
     ax.axvline(bk, color="#e63946", ls="--", label=f"K={bk}")
     ax.set_xlabel("K"); ax.set_ylabel("Silhouette")
     ax.set_title("K selection"); ax.legend(); ax.grid(alpha=0.3)
-    plt.tight_layout(); plt.savefig("17_k_selection.png", dpi=150); plt.show()
+    plt.tight_layout()
+    fname = figures_dir / f"17_k_selection_{RUN_TS}.png"
+    plt.savefig(fname, dpi=150)
+    plt.close()
+    logger.info(f"  Saved {fname}")
     return bk
 
 
@@ -567,25 +625,27 @@ def _fixed_k_grid(pca_emb, proj_coords, proj_name, fname, ks):
         ax.legend(fontsize=7, markerscale=1.5, loc="best", framealpha=0.6)
         ax.grid(alpha=0.2)
     plt.tight_layout()
-    plt.savefig(fname, dpi=150, bbox_inches="tight"); plt.show()
-    print(f"  Saved {fname}")
+    plt.savefig(fname, dpi=150, bbox_inches="tight")
+    plt.close()
+    logger.info(f"  Saved {fname}")
     return rows
 
-def experiment_fixed_k(pca_emb, ts, ks=(3, 5, 7, 11)):
-    print(f"\n  Fixed-K experiment  K={list(ks)}")
-    rows_ts = _fixed_k_grid(pca_emb, ts, "t-SNE", "20_fixed_k_tsne.png", ks)
+def experiment_fixed_k(pca_emb, ts, figures_dir: Path, ks=(3, 5, 7, 11)):
+    logger.info(f"\n  Fixed-K experiment  K={list(ks)}")
+    fname = figures_dir / f"20_fixed_k_tsne_{RUN_TS}.png"
+    rows_ts = _fixed_k_grid(pca_emb, ts, "t-SNE", fname, ks)
 
-    print("\n  Cluster quality — t-SNE projection:")
+    logger.info("\n  Cluster quality — t-SNE projection:")
     _print_quality(rows_ts)
     return pd.DataFrame(rows_ts).T
 
 def _print_quality(rows):
-    print(f"  {'K':<8} {'Silhouette':>12} {'Davies-Bouldin':>16}  Quality")
-    print("  " + "-" * 46)
+    logger.info(f"  {'K':<8} {'Silhouette':>12} {'Davies-Bouldin':>16}  Quality")
+    logger.info("  " + "-" * 46)
     for k, r in rows.items():
         sil, db = r["Silhouette"], r["DB"]
         q = "Excellent" if sil > 0.6 else "Good" if sil > 0.4 else "Fair" if sil > 0.2 else "Poor"
-        print(f"  {k:<8} {sil:>12.4f} {db:>16.4f}  {q}")
+        logger.info(f"  {k:<8} {sil:>12.4f} {db:>16.4f}  {q}")
 
 def cluster_all(tr_norm, tr_pca, te_norm, te_pca, k):
     km      = KMeans(n_clusters=k, random_state=42, n_init=20).fit(tr_pca)
@@ -630,10 +690,10 @@ def print_metrics(tr_norm, tr_pca, tr_pred, tr_lbl,
             "Agg"    : evaluate(en, pred["agg"],    gt, "cosine"),
             "GMM"    : evaluate(ep, pred["gmm"],    gt),
         }
-        print(f"\n── {split} ──────────────────────────────────────")
-        print(pd.DataFrame(rows).T.to_string(float_format=lambda x: f"{x:.4f}"))
+        logger.info(f"\n── {split} ──────────────────────────────────────")
+        logger.info("\n" + pd.DataFrame(rows).T.to_string(float_format=lambda x: f"{x:.4f}"))
 
-    print("\nGeneralisation gap  (train ARI − test ARI):")
+    logger.info("\nGeneralisation gap  (train ARI − test ARI):")
     for m, ek, em in [("KMeans", "kmeans", "euclidean"),
                       ("Agg",    "agg",    "cosine"),
                       ("GMM",    "gmm",    "euclidean")]:
@@ -641,12 +701,12 @@ def print_metrics(tr_norm, tr_pca, tr_pred, tr_lbl,
         te_v = evaluate(te_pca if em=="euclidean" else te_norm, te_pred[ek], te_lbl, em)["ARI"] or 0
         gap  = (tr_v or 0) - (te_v or 0)
         flag = "good" if gap < 0.10 else "overfit" if gap > 0.20 else "acceptable"
-        print(f"  {m:8s}  train={tr_v:.4f}  test={te_v:.4f}  gap={gap:+.4f}  [{flag}]")
+        logger.info(f"  {m:8s}  train={tr_v:.4f}  test={te_v:.4f}  gap={gap:+.4f}  [{flag}]")
 
 # ── VibClustNet diagnostic plots ──────────────────────────────────────────────
-def plot_vibclustnet_diagnostics(model, te_X, te_pred_kmeans, device):
+def plot_vibclustnet_diagnostics(model, te_X, te_pred_kmeans, device, figures_dir: Path):
     """
-    Three diagnostic plots (saved to disk, no plt.show() blocking):
+    Three diagnostic plots (saved to disk):
       1. Average temporal attention profile per cluster (mean over samples & channels → T)
       2. CAIM cross-axis attention heatmap per cluster (3×3 matrix, X/Y/Z)
       3. Original vs reconstructed signal for 3 random test samples (all 3 axes)
@@ -679,9 +739,10 @@ def plot_vibclustnet_diagnostics(model, te_X, te_pred_kmeans, device):
         ax.set_xlabel("Time step"); ax.set_ylabel("Attention")
         ax.grid(alpha=0.3)
     plt.tight_layout()
-    plt.savefig("vcn_temporal_attention.png", dpi=150, bbox_inches="tight")
+    fname = figures_dir / f"vcn_temporal_attention_{RUN_TS}.png"
+    plt.savefig(fname, dpi=150, bbox_inches="tight")
     plt.close()
-    print("  Saved vcn_temporal_attention.png")
+    logger.info(f"  Saved {fname}")
 
     # ── 2. CAIM cross-axis heatmap per cluster ────────────────────────────────
     axis_labels = ["X", "Y", "Z"]
@@ -696,9 +757,10 @@ def plot_vibclustnet_diagnostics(model, te_X, te_pred_kmeans, device):
         ax.set_title(f"Cluster {cid}", fontsize=9)
         plt.colorbar(im, ax=ax, shrink=0.8)
     plt.tight_layout()
-    plt.savefig("vcn_caim_heatmap.png", dpi=150, bbox_inches="tight")
+    fname = figures_dir / f"vcn_caim_heatmap_{RUN_TS}.png"
+    plt.savefig(fname, dpi=150, bbox_inches="tight")
     plt.close()
-    print("  Saved vcn_caim_heatmap.png")
+    logger.info(f"  Saved {fname}")
 
     # ── 3. Reconstruction for 3 random test samples ───────────────────────────
     rng  = np.random.default_rng(42)
@@ -721,9 +783,10 @@ def plot_vibclustnet_diagnostics(model, te_X, te_pred_kmeans, device):
                 ax.set_title(f"Sample {idx} — Axis {axis_names[col]}", fontsize=9)
                 ax.set_xlabel("Time"); ax.legend(fontsize=7); ax.grid(alpha=0.3)
     plt.tight_layout()
-    plt.savefig("vcn_reconstruction.png", dpi=150, bbox_inches="tight")
+    fname = figures_dir / f"vcn_reconstruction_{RUN_TS}.png"
+    plt.savefig(fname, dpi=150, bbox_inches="tight")
     plt.close()
-    print("  Saved vcn_reconstruction.png")
+    logger.info(f"  Saved {fname}")
 
 
 # ── Visualisation ─────────────────────────────────────────────────────────────
@@ -744,7 +807,7 @@ def _scatter(ax, xy, lbls, legend_fn, title, xlabel):
 
 def project(pca_emb, tag):
     perp = min(30, len(pca_emb) - 1)
-    print(f"  t-SNE [{tag}]...")
+    logger.info(f"  t-SNE [{tag}]...")
     ts = TSNE(n_components=2, random_state=42,
               perplexity=perp, max_iter=1000).fit_transform(pca_emb)
     return ts
@@ -773,30 +836,40 @@ def _plot_proj_grid(coords, proj_name, pred, c2s, gt, fname):
     ax.legend(fontsize=6, markerscale=1.5, loc="best", framealpha=0.6, title="Super-class")
     ax.grid(alpha=0.2)
     plt.tight_layout()
-    plt.savefig(fname, dpi=150, bbox_inches="tight"); plt.show()
-    print(f"  Saved {fname}")
+    plt.savefig(fname, dpi=150, bbox_inches="tight")
+    plt.close()
+    logger.info(f"  Saved {fname}")
 
-def plot_grid(ts, pred, c2s, gt):
-    _plot_proj_grid(ts, "t-SNE", pred, c2s, gt, fname="18_tsne_test_clusters.png")
+def plot_grid(ts, pred, c2s, gt, figures_dir: Path):
+    fname = figures_dir / f"18_tsne_test_clusters_{RUN_TS}.png"
+    _plot_proj_grid(ts, "t-SNE", pred, c2s, gt, fname=fname)
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main():
+    figures_dir = CONFIG["figures_dir"]
+    figures_dir.mkdir(parents=True, exist_ok=True)
+
+    setup_logging(log_dir=Path("logs"))
+
     device = torch.device("mps"  if torch.backends.mps.is_available() else
                           "cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Device: {device}\n")
+    logger.info(f"Device: {device}")
+    logger.info(f"Run timestamp: {RUN_TS}")
+    logger.info(f"Figures dir  : {figures_dir.resolve()}")
+    logger.info(f"Models dir   : {CONFIG['models_dir'].resolve()}")
 
-    print("[0] Surface names")
+    logger.info("\n[0] Surface names")
     load_surface_names(CONFIG["surface_types_csv"])
 
-    print("\n[1] Load windowed pkl")
+    logger.info("\n[1] Load windowed pkl")
     tr_X, tr_y, te_X, te_y, _ = load_windowed_data(CONFIG)
     T = tr_X.shape[2]          # tr_X is (N, 3, T)
 
-    print("\n[2] Super-class distribution (train):")
+    logger.info("\n[2] Super-class distribution (train):")
     for sc, n in sorted(zip(*np.unique(tr_y, return_counts=True))):
-        print(f"    {super_name(sc):30s}: {n} windows")
+        logger.info(f"    {super_name(sc):30s}: {n} windows")
 
-    print("\n[3] Train VibClustNet autoencoder")
+    logger.info("\n[3] Train VibClustNet autoencoder")
     tr_ds = WindowedDataset(tr_X, tr_y)
     va_ds = WindowedDataset(te_X, te_y)
     tr_loader = DataLoader(tr_ds, batch_size=CONFIG["vcn_batch_size"],
@@ -804,44 +877,47 @@ def main():
     va_loader = DataLoader(va_ds, batch_size=CONFIG["vcn_batch_size"],
                            shuffle=False, num_workers=0)
     model = VibClustNet(T=T, emb_dim=CONFIG["vcn_embedding_dim"]).to(device)
-    print(f"  Parameters: {sum(p.numel() for p in model.parameters()):,}")
+    logger.info(f"  Parameters: {sum(p.numel() for p in model.parameters()):,}")
     model = train_vibclustnet(model, tr_loader, va_loader, CONFIG, device,
                               X_labeled=tr_X, y_labeled=tr_y)
 
-    print("\n[4] Embeddings + PCA")
+    logger.info("\n[3b] Save model")
+    save_model(model, CONFIG)
+
+    logger.info("\n[4] Embeddings + PCA")
     tr_emb = embed(model, tr_X, device)
     te_emb = embed(model, te_X, device)
 
     tr_norm, tr_pca, te_norm, te_pca, _ = pca_reduce(tr_emb, te_emb, CONFIG["pca_variance"])
 
-    print("\n[7] Clustering")
+    logger.info("\n[7] Clustering")
     n_surf = N_SUPER_CLASSES
-    print(f"  Super-classes={n_surf}  — sweeping K {max(2,n_surf-2)}..{n_surf+2}")
-    k = best_k(tr_pca, max(2, n_surf-2), n_surf+2)
+    logger.info(f"  Super-classes={n_surf}  — sweeping K {max(2,n_surf-2)}..{n_surf+2}")
+    k = best_k(tr_pca, max(2, n_surf-2), n_surf+2, figures_dir)
     tr_pred, te_pred, _ = cluster_all(tr_norm, tr_pca, te_norm, te_pca, k)
 
     tr_c2s = {m: c2s_map(tr_pred[m], tr_y) for m in tr_pred}
     te_c2s = {m: c2s_map(te_pred[m], te_y) for m in te_pred}
 
-    print("\n  K-Means cluster → surface (train):")
+    logger.info("\n  K-Means cluster → surface (train):")
     for cid, sid in sorted(tr_c2s["kmeans"].items()):
-        print(f"    cluster {cid:2d} → {super_name(sid)}")
+        logger.info(f"    cluster {cid:2d} → {super_name(sid)}")
 
-    print("\n[8] Metrics")
+    logger.info("\n[8] Metrics")
     print_metrics(tr_norm, tr_pca, tr_pred, tr_y,
                   te_norm, te_pca, te_pred, te_y)
 
-    print("\n[9] Visualise (t-SNE on test split)")
+    logger.info("\n[9] Visualise (t-SNE on test split)")
     ts = project(te_pca, "Test")
-    plot_grid(ts, te_pred, te_c2s, te_y)
+    plot_grid(ts, te_pred, te_c2s, te_y, figures_dir)
 
     # Fixed-K experiment: K=3, 5, 7, 11
-    experiment_fixed_k(te_pca, ts, ks=(3, 5, 7, 11))
+    experiment_fixed_k(te_pca, ts, figures_dir, ks=(3, 5, 7, 11))
 
-    print("\n[10] VibClustNet diagnostic plots")
-    plot_vibclustnet_diagnostics(model, te_X, te_pred["kmeans"], device)
+    logger.info("\n[10] VibClustNet diagnostic plots")
+    plot_vibclustnet_diagnostics(model, te_X, te_pred["kmeans"], device, figures_dir)
 
-    print("\nDone!")
+    logger.info("\nDone!")
 
 if __name__ == "__main__":
     main()
