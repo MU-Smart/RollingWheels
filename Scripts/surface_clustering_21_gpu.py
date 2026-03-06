@@ -403,22 +403,17 @@ class VibClustNet(nn.Module):
 
 
 # ── Multi-depth reconstruction loss ───────────────────────────────────────────
-def multi_rec_loss(x_orig, recon, enc_inter, dec_inter):
+def multi_rec_loss(x_orig, recon):
     """
-    MSE at 3 levels (signal + two intermediate pairs), summed with 0.5 weight
-    on intermediates.  F.mse_loss already returns an element-wise mean, so no
-    extra division by dimensionality is needed.
+    Pure signal reconstruction loss (MSE).
+    Intermediate losses (L2/L3) were removed: they forced encoder and decoder
+    intermediate representations into the same space despite living in different
+    functional spaces, overwhelming L1 and keeping loss pinned at ~1.0 (the
+    predict-zero baseline for Z-normalised data).
     """
     if x_orig.shape[1] != 3:
         x_orig = x_orig.permute(0, 2, 1)
-    # L1: main reconstruction
-    l1 = F.mse_loss(recon, x_orig)
-    # L2: encoder bottleneck ↔ decoder upsample output  (both 160-dim, pooled)
-    l2 = F.mse_loss(enc_inter["after_mstcb3"], dec_inter["d_after_upsample"])
-    # L3: encoder stage-1 mean (avg 3 axes → 160-dim) ↔ decoder conv1 output
-    enc_s1 = enc_inter["after_mstcb12"].mean(dim=1)   # (B, 160)
-    l3 = F.mse_loss(enc_s1, dec_inter["d_after_conv1"])
-    return l1 + 0.5 * l2 + 0.5 * l3
+    return F.mse_loss(recon, x_orig)
 
 
 # ── Windowed dataset ───────────────────────────────────────────────────────────
@@ -505,8 +500,8 @@ def train_vibclustnet(model, train_loader, val_loader, cfg, device,
         for xb, _ in train_loader:
             xb = xb.to(device)
             opt.zero_grad()
-            recon, _, enc_inter, dec_inter = model(xb)
-            loss = multi_rec_loss(xb, recon, enc_inter, dec_inter)
+            recon, _, _, _ = model(xb)
+            loss = multi_rec_loss(xb, recon)
             loss.backward()
             nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             opt.step()
@@ -519,8 +514,8 @@ def train_vibclustnet(model, train_loader, val_loader, cfg, device,
         with torch.no_grad():
             for xb, _ in val_loader:
                 xb = xb.to(device)
-                recon, _, enc_inter, dec_inter = model(xb)
-                va_loss += multi_rec_loss(xb, recon, enc_inter, dec_inter).item()
+                recon, _, _, _ = model(xb)
+                va_loss += multi_rec_loss(xb, recon).item()
         va_loss /= len(val_loader)
 
         sched.step(va_loss)
