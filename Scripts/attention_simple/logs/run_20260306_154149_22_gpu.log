@@ -1,0 +1,44 @@
+2026-03-06 15:41:49  INFO      Log file: /home/mahmudm2/codebase/RollingWheels/Scripts/attention_simple/logs/run_20260306_154149_22_gpu.log
+2026-03-06 15:41:49  INFO      Device: cuda
+2026-03-06 15:41:49  INFO      Run timestamp: 20260306_154149
+2026-03-06 15:41:49  INFO      Figures dir  : /home/mahmudm2/codebase/RollingWheels/Scripts/attention_simple/figures
+2026-03-06 15:41:49  INFO      Models dir   : /home/mahmudm2/codebase/RollingWheels/Scripts/attention_simple/models
+2026-03-06 15:41:49  INFO      
+[0] Surface names
+2026-03-06 15:41:49  WARNING     WARNING: [Errno 2] No such file or directory: '../Datasets/surface_types.csv'
+2026-03-06 15:41:49  INFO      
+[1] Load windowed pkl
+2026-03-06 15:41:49  INFO        Loading: ../../Datasets/ExtractedFeatures/labeled_accelerometer_raw_windows.csv
+2026-03-06 15:41:54  INFO        Rows: 8153088  Windows: 7962
+2026-03-06 15:41:58  INFO      
+  Windows: (7962, 3, 1024)  Labels: (7962,)
+2026-03-06 15:41:58  INFO        Labeled: 7962  Unlabeled: 0
+2026-03-06 15:41:58  INFO        Classes: [0, 1, 2, 3, 4, 6, 7]
+2026-03-06 15:41:58  INFO        Stratified split:
+2026-03-06 15:41:58  INFO          Surface 0                     :  1109 train   277 test
+2026-03-06 15:41:58  INFO          Surface 1                     :   671 train   167 test
+2026-03-06 15:41:58  INFO          Surface 2                     :   905 train   226 test
+2026-03-06 15:41:58  INFO          Surface 3                     :  1719 train   429 test
+2026-03-06 15:41:58  INFO          Surface 4                     :   958 train   239 test
+2026-03-06 15:41:58  INFO          Surface 6                     :   454 train   113 test
+2026-03-06 15:41:58  INFO          Surface 7                     :   556 train   139 test
+2026-03-06 15:41:58  INFO      
+[2] Super-class distribution (train):
+2026-03-06 15:41:58  INFO          Paving Blocks (Smooth) / Indoor Tile: 1109 windows
+2026-03-06 15:41:58  INFO          Concrete Sidewalk             : 671 windows
+2026-03-06 15:41:58  INFO          Brick (Smooth + Rough)        : 905 windows
+2026-03-06 15:41:58  INFO          Asphalt + Indoor Carpet       : 1719 windows
+2026-03-06 15:41:58  INFO          Indoor Linoleum               : 958 windows
+2026-03-06 15:41:58  INFO          Curb (Up + Down)              : 454 windows
+2026-03-06 15:41:58  INFO          Rect. Tiles / Paving Blocks (Rough): 556 windows
+2026-03-06 15:41:58  INFO      
+[3] Train VibClustNet autoencoder
+2026-03-06 15:41:59  INFO        Parameters: 520,732
+2026-03-06 15:42:12  INFO        [VCN]   1/150  train=34866.534921  val=34683.025781  lr=1.00e-03 *
+2026-03-06 15:42:23  INFO        [VCN]   2/150  train=34854.919284  val=34692.419727  lr=1.00e-03
+2026-03-06 15:42:33  INFO        [VCN]   3/150  train=34853.816622  val=34686.114883  lr=1.00e-03
+2026-03-06 15:42:43  INFO        [VCN]   4/150  train=34853.118424  val=34687.093125  lr=1.00e-03
+2026-03-06 15:42:54  INFO        [VCN]   5/150  train=34854.699867  val=34700.444844  lr=1.00e-03
+2026-03-06 15:43:04  INFO        [VCN]   6/150  train=34852.750746  val=34687.912734  lr=1.00e-03
+2026-03-06 15:43:15  INFO        [VCN]   7/150  train=34853.757008  val=34693.227031  lr=1.00e-03
+2026-03-06 15:43:25  INFO        [VCN]   8/150  train=34852.703400  val=34685.701523  lr=1.00e-03
