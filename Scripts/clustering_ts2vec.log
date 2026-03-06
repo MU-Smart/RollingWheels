@@ -1,7 +1,7 @@
-2026-03-05 14:15:08,970  INFO  === Road Surface Clustering — TS2Vec ===
-2026-03-05 14:15:08,970  INFO  Config: {'data_dir': PosixPath('../Datasets/Processed_Data/Labeled_Data_Without_GPS'), 'window_size': 1024, 'overlap': 0.5, 'acc_epochs': 120, 'output_dims': 128}
-2026-03-05 14:15:09,086  INFO  Using device: mps
-2026-03-05 14:15:09,093  INFO  Surface-ID distribution:
+2026-03-05 15:05:14,993  INFO  === Road Surface Clustering — TS2Vec ===
+2026-03-05 15:05:14,994  INFO  Config: {'data_dir': PosixPath('../Datasets/Processed_Data/Labeled_Data_Without_GPS'), 'window_size': 1024, 'overlap': 0.5, 'acc_epochs': 120, 'output_dims': 128}
+2026-03-05 15:05:15,175  INFO  Using device: cuda
+2026-03-05 15:05:15,596  INFO  Surface-ID distribution:
 surface_id
 10    406
 9     403
@@ -15,5 +15,28 @@ surface_id
 11     28
 12     20
 1      10
-2026-03-05 14:15:11,933  INFO  Extracted 7962 accelerometer windows.
-2026-03-05 14:15:11,999  INFO  Training TS2Vec for Accelerometer — shape=(7962, 1024, 3), epochs=120
+2026-03-05 15:05:23,781  INFO  Extracted 7962 accelerometer windows.
+2026-03-05 15:05:23,932  INFO  Training TS2Vec for Accelerometer — shape=(7962, 1024, 3), epochs=120
+2026-03-05 15:06:25,370  INFO  Epoch #0: loss=2.4248693127267558
+2026-03-05 15:07:08,055  INFO  Epoch #1: loss=1.0759918855229613
+2026-03-05 15:07:51,256  INFO  Epoch #2: loss=0.7953497045476672
+2026-03-05 15:08:31,889  INFO  Epoch #3: loss=0.7649601230199188
+2026-03-05 15:09:13,231  INFO  Epoch #4: loss=0.6662737712174114
+2026-03-05 15:09:55,085  INFO  Epoch #5: loss=0.6039357436015093
+2026-03-05 15:10:36,168  INFO  Epoch #6: loss=0.6383234242078524
+2026-03-05 15:11:17,266  INFO  Epoch #7: loss=0.582847743147096
+2026-03-05 15:11:58,639  INFO  Epoch #8: loss=0.5808661776169445
+2026-03-05 15:12:39,914  INFO  Epoch #9: loss=0.551830873942711
+2026-03-05 15:13:21,640  INFO  Epoch #10: loss=0.5382657356305381
+2026-03-05 15:14:03,318  INFO  Epoch #11: loss=0.4812633671631036
+2026-03-05 15:14:44,497  INFO  Epoch #12: loss=0.481375456515932
+2026-03-05 15:15:25,914  INFO  Epoch #13: loss=0.5158924678081958
+2026-03-05 15:16:08,084  INFO  Epoch #14: loss=0.44699952333146176
+2026-03-05 15:16:50,021  INFO  Epoch #15: loss=0.49235862421557697
+2026-03-05 15:17:31,364  INFO  Epoch #16: loss=0.48357385447927165
+2026-03-05 15:18:13,928  INFO  Epoch #17: loss=0.4472369612522528
+2026-03-05 15:18:55,822  INFO  Epoch #18: loss=0.42609113110023245
+2026-03-05 15:19:38,136  INFO  Epoch #19: loss=0.4810384178545393
+2026-03-05 15:20:20,825  INFO  Epoch #20: loss=0.4068326309053471
+2026-03-05 15:21:02,685  INFO  Epoch #21: loss=0.41796679249112034
+2026-03-05 15:21:45,015  INFO  Epoch #22: loss=0.45549117331533606
