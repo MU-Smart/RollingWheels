@@ -226,14 +226,14 @@ def embed(model, X, device, bs=512):
 
 # ── Module A: Multi-Scale Temporal Conv Block ──────────────────────────────────
 class MSTCB(nn.Module):
-    """5-branch multi-scale conv block → fixed 160-channel output."""
-    def __init__(self, in_ch: int, out_ch: int = 160):
+    """4-branch multi-scale conv block → fixed output channels."""
+    def __init__(self, in_ch: int, out_ch: int = 96):
         super().__init__()
-        b = out_ch // 5   # 32 filters per branch (5 × 32 = 160)
+        b = out_ch // 4   # filters per branch (3 conv + 1 pool = 4 × b)
         self.branches = nn.ModuleList([
             nn.Sequential(nn.Conv1d(in_ch, b, k, padding="same"),
                           nn.BatchNorm1d(b), nn.ReLU())
-            for k in [3, 7, 15, 31]
+            for k in [3, 7, 15]
         ])
         self.pool_branch = nn.Sequential(
             nn.MaxPool1d(3, stride=1, padding=1),
@@ -299,22 +299,23 @@ class VibClustNet(nn.Module):
     def __init__(self, T: int, emb_dim: int = 256):
         super().__init__()
         self.T = T
+        CH = 96                                      # internal channel width
         # Shared per-axis MSTCB — same nn.Module instance for all 3 axes
-        self.mstcb1 = MSTCB(1,   160)
-        self.mstcb2 = MSTCB(160, 160)
+        self.mstcb1 = MSTCB(1,      CH)
+        self.mstcb2 = MSTCB(CH,     CH)
         # Cross-axis + frequency attention
-        self.caim   = CAIM(160, num_heads=4)
-        self.faag   = FAAG(480, T)        # 3 axes × 160ch concatenated
+        self.caim   = CAIM(CH, num_heads=4)
+        self.faag   = FAAG(3 * CH, T)               # 3 axes × 96ch = 288
         # Third MSTCB after attention
-        self.mstcb3 = MSTCB(480, 160)
+        self.mstcb3 = MSTCB(3 * CH, CH)
         # Encoder head
-        self.enc_head = nn.Linear(160, emb_dim)
+        self.enc_head = nn.Linear(CH, emb_dim)
         # Decoder (mirror, simplified)
-        self.dec_linear   = nn.Linear(emb_dim, 160)
+        self.dec_linear   = nn.Linear(emb_dim, CH)
         self.dec_upsample = nn.Upsample(size=T, mode="linear", align_corners=False)
-        self.dec_conv1    = nn.Sequential(nn.Conv1d(160, 160, 3, padding="same"), nn.ReLU())
-        self.dec_conv2    = nn.Sequential(nn.Conv1d(160,  64, 3, padding="same"), nn.ReLU())
-        self.dec_out      = nn.Conv1d(64, 3, 1)
+        self.dec_conv1    = nn.Sequential(nn.Conv1d(CH, CH, 3, padding="same"), nn.ReLU())
+        self.dec_conv2    = nn.Sequential(nn.Conv1d(CH, CH // 3, 3, padding="same"), nn.ReLU())
+        self.dec_out      = nn.Conv1d(CH // 3, 3, 1)
 
     def _encode(self, x):
         """x must be (B, 3, T). Returns emb (B, emb_dim) + enc_inter dict."""
@@ -453,6 +454,8 @@ def train_vibclustnet(model, train_loader, val_loader, cfg, device,
     - Saves / reloads best checkpoint
     """
     opt  = torch.optim.Adam(model.parameters(), lr=cfg["vcn_lr"])
+    sched = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        opt, mode="min", factor=0.5, patience=15, min_lr=1e-5)
     best = float("inf")
     pat  = 0
     ckpt = cfg["vcn_checkpoint"]
@@ -482,12 +485,14 @@ def train_vibclustnet(model, train_loader, val_loader, cfg, device,
                 va_loss += multi_rec_loss(xb, recon, enc_inter, dec_inter).item()
         va_loss /= len(val_loader)
 
+        sched.step(va_loss)
         imp  = va_loss < best - 1e-6
         best, pat = (va_loss, 0) if imp else (best, pat + 1)
         if imp:
             torch.save(model.state_dict(), ckpt)
+        lr_now = opt.param_groups[0]["lr"]
         print(f"  [VCN] {ep+1:3d}/{cfg['vcn_epochs']}  "
-              f"train={tr_loss:.6f}  val={va_loss:.6f}" + (" *" if imp else ""))
+              f"train={tr_loss:.6f}  val={va_loss:.6f}  lr={lr_now:.2e}" + (" *" if imp else ""))
 
         # ── NMI probe every 10 epochs ─────────────────────────────────────────
         if (ep + 1) % 10 == 0 and X_labeled is not None and len(X_labeled) >= 2:
