@@ -58,7 +58,7 @@ CONFIG = {
     "window_size"   : 1024,
     "overlap"       : 0.5,
     "acc_epochs"    : 100,
-    "output_dims"   : 256,
+    "output_dims"   : 1024,
     "test_size"     : 0.2,
     "seed"          : 42,
     "pca_variance"  : 0.95,
