@@ -11,7 +11,7 @@ Steps
 3. Extract embeddings  →  PCA
 4. Cluster (KMeans / Agglomerative / GMM) on PCA embeddings
 5. Evaluate on test split
-6. Visualise: t-SNE + UMAP  (1×4 grid: 3 methods + ground truth)
+6. Visualise: t-SNE  (1×4 grid: 3 methods + ground truth)
 7. VibClustNet diagnostic plots (attention, CAIM, reconstruction)
 """
 
@@ -33,7 +33,6 @@ from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans, AgglomerativeClustering
 from sklearn.mixture import GaussianMixture
 from sklearn.manifold import TSNE
-import umap as umap_lib
 from sklearn.metrics import (silhouette_score, davies_bouldin_score,
                              calinski_harabasz_score,
                              adjusted_rand_score, normalized_mutual_info_score)
@@ -603,15 +602,12 @@ def _fixed_k_grid(pca_emb, proj_coords, proj_name, fname, ks):
     print(f"  Saved {fname}")
     return rows
 
-def experiment_fixed_k(pca_emb, ts, um, ks=(3, 5, 7, 11)):
+def experiment_fixed_k(pca_emb, ts, ks=(3, 5, 7, 11)):
     print(f"\n  Fixed-K experiment  K={list(ks)}")
     rows_ts = _fixed_k_grid(pca_emb, ts, "t-SNE", "20_fixed_k_tsne.png", ks)
-    rows_um = _fixed_k_grid(pca_emb, um, "UMAP",  "21_fixed_k_umap.png", ks)
 
     print("\n  Cluster quality — t-SNE projection:")
     _print_quality(rows_ts)
-    print("\n  Cluster quality — UMAP projection:")
-    _print_quality(rows_um)
     return pd.DataFrame(rows_ts).T
 
 def _print_quality(rows):
@@ -782,11 +778,7 @@ def project(pca_emb, tag):
     print(f"  t-SNE [{tag}]...")
     ts = TSNE(n_components=2, random_state=42,
               perplexity=perp, max_iter=1000).fit_transform(pca_emb)
-    print(f"  UMAP  [{tag}]...")
-    um = umap_lib.UMAP(n_components=2, random_state=42,
-                       n_neighbors=min(15, len(pca_emb)-1),
-                       min_dist=0.1, metric="euclidean").fit_transform(pca_emb)
-    return ts, um
+    return ts
 
 def _plot_proj_grid(coords, proj_name, pred, c2s, gt, fname):
     """1-row × 4-col: K-Means | Agglomerative | Spectral | Ground Truth."""
@@ -815,9 +807,8 @@ def _plot_proj_grid(coords, proj_name, pred, c2s, gt, fname):
     plt.savefig(fname, dpi=150, bbox_inches="tight"); plt.show()
     print(f"  Saved {fname}")
 
-def plot_grid(ts, um, pred, c2s, gt):
+def plot_grid(ts, pred, c2s, gt):
     _plot_proj_grid(ts, "t-SNE", pred, c2s, gt, fname="18_tsne_test_clusters.png")
-    _plot_proj_grid(um, "UMAP",  pred, c2s, gt, fname="19_umap_test_clusters.png")
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main():
@@ -871,12 +862,12 @@ def main():
     print_metrics(tr_norm, tr_pca, tr_pred, tr_y,
                   te_norm, te_pca, te_pred, te_y)
 
-    print("\n[9] Visualise (t-SNE + UMAP on test split)")
-    ts, um = project(te_pca, "Test")
-    plot_grid(ts, um, te_pred, te_c2s, te_y)
+    print("\n[9] Visualise (t-SNE on test split)")
+    ts = project(te_pca, "Test")
+    plot_grid(ts, te_pred, te_c2s, te_y)
 
     # Fixed-K experiment: K=3, 5, 7, 11
-    experiment_fixed_k(te_pca, ts, um, ks=(3, 5, 7, 11))
+    experiment_fixed_k(te_pca, ts, ks=(3, 5, 7, 11))
 
     print("\n[10] VibClustNet diagnostic plots")
     plot_vibclustnet_diagnostics(model, te_X, te_pred["kmeans"], device)
