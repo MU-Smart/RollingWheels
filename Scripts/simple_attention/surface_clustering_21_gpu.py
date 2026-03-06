@@ -44,7 +44,7 @@ RUN_TS = datetime.now().strftime("%Y%m%d_%H%M%S")
 def setup_logging(log_dir: Path = Path(".")) -> logging.Logger:
     """Set up logger writing to both console and a timestamped log file."""
     log_dir.mkdir(parents=True, exist_ok=True)
-    log_path = log_dir / f"run_{RUN_TS}.log"
+    log_path = log_dir / f"run_{RUN_TS}_21_gpu.log"
 
     fmt = logging.Formatter(
         fmt="%(asctime)s  %(levelname)-8s  %(message)s",

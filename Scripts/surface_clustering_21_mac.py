@@ -64,7 +64,7 @@ CONFIG = {
     "vcn_lr"             : 1e-3,
     "vcn_patience"       : 50,
     "vcn_embedding_dim"  : 128,
-    "vcn_checkpoint"     : Path("vibclustnet_best.pth"),
+    "vcn_checkpoint"     : Path("vibclustnet_best_21_mac.pth"),
 }
 
 # ── Surface name lookup ───────────────────────────────────────────────────────
@@ -779,7 +779,7 @@ def plot_grid(ts, pred, c2s, gt):
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main():
     device = torch.device("mps"  if torch.backends.mps.is_available() else
-                          "cuda" if torch.cuda.is_available() else "cpu")
+                          "cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}\n")
     torch.set_float32_matmul_precision("high")  # faster matmul on Apple Silicon
 

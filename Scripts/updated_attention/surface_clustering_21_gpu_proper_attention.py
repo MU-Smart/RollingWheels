@@ -44,7 +44,7 @@ RUN_TS = datetime.now().strftime("%Y%m%d_%H%M%S")
 def setup_logging(log_dir: Path = Path(".")) -> logging.Logger:
     """Set up logger writing to both console and a timestamped log file."""
     log_dir.mkdir(parents=True, exist_ok=True)
-    log_path = log_dir / f"run_{RUN_TS}.log"
+    log_path = log_dir / f"run_{RUN_TS}_updated_attention.log"
 
     fmt = logging.Formatter(
         fmt="%(asctime)s  %(levelname)-8s  %(message)s",
@@ -95,7 +95,7 @@ CONFIG = {
     "vcn_lr"             : 1e-3,
     "vcn_patience"       : 50,
     "vcn_embedding_dim"  : 256,
-    "vcn_checkpoint"     : Path("vibclustnet_best.pth"),
+    "vcn_checkpoint"     : Path("vibclustnet_best_21_gpu_proper_attention.pth"),
 
     # Output directories
     "figures_dir"        : Path("figures"),
