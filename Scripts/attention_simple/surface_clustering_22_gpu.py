@@ -29,9 +29,9 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from sklearn.preprocessing import normalize
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neighbors import KNeighborsClassifier, NearestNeighbors
 from sklearn.decomposition import PCA
-from sklearn.cluster import KMeans, AgglomerativeClustering
+from sklearn.cluster import KMeans, AgglomerativeClustering, DBSCAN
 from sklearn.mixture import GaussianMixture
 from sklearn.manifold import TSNE
 from sklearn.metrics import (silhouette_score, davies_bouldin_score,
@@ -90,12 +90,12 @@ CONFIG = {
     "windowed_csv"       : Path("../../Datasets/ExtractedFeatures/labeled_accelerometer_raw_windows.csv"),
 
     # VibClustNet hyper-parameters
-    "vcn_epochs"         : 500,
+    "vcn_epochs"         : 200,
     "vcn_batch_size"     : 32,
     "vcn_lr"             : 1e-3,
     "vcn_patience"       : 50,
-    "vcn_embedding_dim"  : 256,
-    "vcn_checkpoint"     : Path("vibclustnet_best_21.pth"),
+    "vcn_embedding_dim"  : 128,
+    "vcn_checkpoint"     : Path("vibclustnet_best_22.pth"),
 
     # Output directories
     "figures_dir"        : Path("figures"),
@@ -573,6 +573,187 @@ def pca_reduce(emb_tr, emb_te, variance=0.95):
                 f"(var={pca.explained_variance_ratio_.sum():.3f})")
     return n_tr, pca.transform(n_tr), n_te, pca.transform(n_te), pca
 
+# ── Additional clustering algorithms ─────────────────────────────────────────
+
+class SBScanClustering:
+    """DBSCAN with automatic epsilon selection via k-NN distance elbow."""
+    def __init__(self, n_clusters_hint: int = 5, min_samples: int = 5):
+        self.n_clusters_hint = n_clusters_hint
+        self.min_samples     = min_samples
+        self.labels_         = None
+        self.eps_            = None
+        self._knn_clf        = None
+
+    def fit(self, X):
+        k     = self.min_samples
+        nbrs  = NearestNeighbors(n_neighbors=k).fit(X)
+        dists, _ = nbrs.kneighbors(X)
+        k_dists  = np.sort(dists[:, -1])[::-1]
+        d2       = np.gradient(np.gradient(k_dists))
+        self.eps_ = float(k_dists[np.argmax(np.abs(d2))])
+        db = DBSCAN(eps=self.eps_, min_samples=self.min_samples).fit(X)
+        self.labels_ = db.labels_
+        mask = self.labels_ != -1
+        if mask.sum() > 0:
+            self._knn_clf = KNeighborsClassifier(n_neighbors=5).fit(X[mask], self.labels_[mask])
+        return self
+
+    def predict(self, X):
+        if self._knn_clf is None:
+            return np.zeros(len(X), dtype=int)
+        return self._knn_clf.predict(X)
+
+
+class PSOClustering:
+    """Particle Swarm Optimisation clustering (minimise WCSS)."""
+    def __init__(self, n_clusters: int = 5, n_particles: int = 15,
+                 max_iter: int = 50, seed: int = 42):
+        self.n_clusters  = n_clusters
+        self.n_particles = n_particles
+        self.max_iter    = max_iter
+        self.seed        = seed
+        self.centroids_  = None
+        self.labels_     = None
+
+    def _assign(self, X, centroids):
+        dists = np.linalg.norm(X[:, None, :] - centroids[None, :, :], axis=-1)
+        return dists.argmin(axis=1)
+
+    def _wcss(self, X, centroids):
+        asgn = self._assign(X, centroids)
+        return sum(((X[asgn == k] - centroids[k]) ** 2).sum()
+                   for k in range(len(centroids)) if (asgn == k).any())
+
+    def fit(self, X):
+        rng = np.random.default_rng(self.seed)
+        D, K, N = X.shape[1], self.n_clusters, self.n_particles
+        particles  = X[rng.choice(len(X), size=N * K, replace=True)].reshape(N, K, D)
+        velocities = rng.uniform(-0.1, 0.1, (N, K, D))
+        pbest      = particles.copy()
+        pbest_fit  = np.array([self._wcss(X, p) for p in particles])
+        gbest      = pbest[pbest_fit.argmin()].copy()
+        gbest_fit  = pbest_fit.min()
+        w, c1, c2  = 0.5, 1.5, 1.5
+        for _ in range(self.max_iter):
+            r1 = rng.uniform(0, 1, (N, K, D))
+            r2 = rng.uniform(0, 1, (N, K, D))
+            velocities = (w * velocities
+                          + c1 * r1 * (pbest - particles)
+                          + c2 * r2 * (gbest[None] - particles))
+            particles += velocities
+            fits = np.array([self._wcss(X, p) for p in particles])
+            imp  = fits < pbest_fit
+            pbest[imp]     = particles[imp]
+            pbest_fit[imp] = fits[imp]
+            if fits.min() < gbest_fit:
+                gbest     = particles[fits.argmin()].copy()
+                gbest_fit = fits.min()
+        self.centroids_ = gbest
+        self.labels_    = self._assign(X, gbest)
+        return self
+
+    def predict(self, X):
+        return self._assign(X, self.centroids_)
+
+
+class RandomAssignClustering:
+    """Randomly assigns cluster IDs without regard to data geometry."""
+    def __init__(self, n_clusters: int = 5, seed: int = 42):
+        self.n_clusters = n_clusters
+        self.seed       = seed
+        self.labels_    = None
+
+    def fit(self, X):
+        rng = np.random.default_rng(self.seed)
+        self.labels_ = rng.integers(0, self.n_clusters, size=len(X))
+        return self
+
+    def predict(self, X):
+        rng = np.random.default_rng(self.seed + 1)
+        return rng.integers(0, self.n_clusters, size=len(X))
+
+
+class GravitationalSearchClustering:
+    """Gravitational Search Algorithm (GSA) clustering."""
+    def __init__(self, n_clusters: int = 5, n_agents: int = 15,
+                 max_iter: int = 50, G0: float = 100.0, alpha: float = 20.0,
+                 seed: int = 42):
+        self.n_clusters = n_clusters
+        self.n_agents   = n_agents
+        self.max_iter   = max_iter
+        self.G0         = G0
+        self.alpha      = alpha
+        self.seed       = seed
+        self.centroids_ = None
+        self.labels_    = None
+
+    def _assign(self, X, centroids):
+        dists = np.linalg.norm(X[:, None, :] - centroids[None, :, :], axis=-1)
+        return dists.argmin(axis=1)
+
+    def _fitness(self, X, centroids):
+        asgn = self._assign(X, centroids)
+        return sum(((X[asgn == k] - centroids[k]) ** 2).sum()
+                   for k in range(len(centroids)) if (asgn == k).any())
+
+    def fit(self, X):
+        rng = np.random.default_rng(self.seed)
+        D, K, N = X.shape[1], self.n_clusters, self.n_agents
+        agents     = X[rng.choice(len(X), size=N * K, replace=True)].reshape(N, K, D)
+        velocities = np.zeros((N, K, D))
+        best_agent, best_fit = None, np.inf
+        for t in range(self.max_iter):
+            fits  = np.array([self._fitness(X, a) for a in agents])
+            G     = self.G0 * np.exp(-self.alpha * t / self.max_iter)
+            f_rng = fits.max() - fits.min()
+            masses = (np.ones(N) / N if f_rng < 1e-10
+                      else (fits.max() - fits) / (f_rng + 1e-10))
+            masses /= masses.sum()
+            if fits.min() < best_fit:
+                best_fit   = fits.min()
+                best_agent = agents[fits.argmin()].copy()
+            k_best  = max(2, int(N * (1 - t / self.max_iter)))
+            top_idx = np.argsort(fits)[:k_best]
+            acc = np.zeros((N, K, D))
+            for i in range(N):
+                for j in top_idx:
+                    if i == j:
+                        continue
+                    r       = np.linalg.norm(agents[j] - agents[i]) + 1e-10
+                    acc[i] += G * masses[j] * (agents[j] - agents[i]) / r
+            velocities = rng.uniform(0, 1, (N, K, D)) * velocities + acc
+            agents    += velocities
+        self.centroids_ = best_agent
+        self.labels_    = self._assign(X, best_agent)
+        return self
+
+    def predict(self, X):
+        return self._assign(X, self.centroids_)
+
+
+class RandomClustering:
+    """Random centroid initialisation + nearest-neighbour assignment (no iteration)."""
+    def __init__(self, n_clusters: int = 5, seed: int = 42):
+        self.n_clusters = n_clusters
+        self.seed       = seed
+        self.centroids_ = None
+        self.labels_    = None
+
+    def _assign(self, X, centroids):
+        dists = np.linalg.norm(X[:, None, :] - centroids[None, :, :], axis=-1)
+        return dists.argmin(axis=1)
+
+    def fit(self, X):
+        rng = np.random.default_rng(self.seed)
+        idxs = rng.choice(len(X), size=self.n_clusters, replace=False)
+        self.centroids_ = X[idxs]
+        self.labels_    = self._assign(X, self.centroids_)
+        return self
+
+    def predict(self, X):
+        return self._assign(X, self.centroids_)
+
+
 # ── Clustering ────────────────────────────────────────────────────────────────
 def best_k(pca_emb, k_min, k_max, figures_dir: Path):
     scores = {}
@@ -646,17 +827,62 @@ def cluster_all(tr_norm, tr_pca, te_norm, te_pca, k):
     km      = KMeans(n_clusters=k, random_state=42, n_init=20).fit(tr_pca)
     agg     = AgglomerativeClustering(n_clusters=k, metric="cosine", linkage="average").fit(tr_norm)
     gmm     = GaussianMixture(n_components=k, random_state=42, n_init=5).fit(tr_pca)
+    sbscan  = SBScanClustering(n_clusters_hint=k, min_samples=5).fit(tr_pca)
+    pos     = PSOClustering(n_clusters=k, seed=42).fit(tr_pca)
+    rand_a  = RandomAssignClustering(n_clusters=k, seed=42).fit(tr_pca)
+    gsa     = GravitationalSearchClustering(n_clusters=k, seed=42).fit(tr_pca)
+    rand_c  = RandomClustering(n_clusters=k, seed=42).fit(tr_pca)
 
-    tr_pred = {"kmeans": km.labels_, "agg": agg.labels_, "gmm": gmm.predict(tr_pca)}
     knn_agg = KNeighborsClassifier(n_neighbors=5).fit(tr_norm, agg.labels_)
+    tr_pred = {
+        "kmeans"     : km.labels_,
+        "agg"        : agg.labels_,
+        "gmm"        : gmm.predict(tr_pca),
+        "sbscan"     : sbscan.labels_,
+        "pos"        : pos.labels_,
+        "rand_assign": rand_a.labels_,
+        "gsa"        : gsa.labels_,
+        "rand_clust" : rand_c.labels_,
+    }
     te_pred = {
-        "kmeans": km.predict(te_pca),
-        "agg"   : knn_agg.predict(te_norm),
-        "gmm"   : gmm.predict(te_pca),
+        "kmeans"     : km.predict(te_pca),
+        "agg"        : knn_agg.predict(te_norm),
+        "gmm"        : gmm.predict(te_pca),
+        "sbscan"     : sbscan.predict(te_pca),
+        "pos"        : pos.predict(te_pca),
+        "rand_assign": RandomAssignClustering(n_clusters=k, seed=99).fit(te_pca).labels_,
+        "gsa"        : gsa.predict(te_pca),
+        "rand_clust" : RandomClustering(n_clusters=k, seed=99).fit(te_pca).labels_,
     }
     return tr_pred, te_pred, km
 
 # ── Evaluation ────────────────────────────────────────────────────────────────
+def dunn_index(X: np.ndarray, labels: np.ndarray) -> float:
+    """
+    Dunn Index = min inter-cluster centroid distance / max intra-cluster diameter.
+    Higher values indicate better-separated, more compact clusters.
+    """
+    unique = np.unique(labels[labels != -1])
+    if len(unique) < 2:
+        return np.nan
+    clusters  = [X[labels == lbl] for lbl in unique]
+    centroids = np.array([c.mean(axis=0) for c in clusters])
+    # Inter-cluster: minimum distance between any pair of centroids
+    min_inter = np.inf
+    for i in range(len(centroids)):
+        for j in range(i + 1, len(centroids)):
+            d = np.linalg.norm(centroids[i] - centroids[j])
+            if d < min_inter:
+                min_inter = d
+    # Intra-cluster: max mean-diameter (2 × avg distance from centroid)
+    max_intra = max(
+        (np.linalg.norm(c - cent, axis=1).mean() * 2
+         for c, cent in zip(clusters, centroids) if len(c) > 0),
+        default=0.0,
+    )
+    return np.nan if max_intra < 1e-10 else float(min_inter / max_intra)
+
+
 def c2s_map(pred, gt):
     return {c: (-1 if c == -1 else int(pd.Series(gt[np.asarray(pred)==c]).mode()[0]))
             for c in set(pred)}
@@ -665,38 +891,49 @@ def evaluate(emb, pred, gt, metric="euclidean"):
     pred = np.asarray(pred); ok = pred != -1
     ev, lv, gv = emb[ok], pred[ok], np.asarray(gt)[ok]
     if len(np.unique(lv)) < 2:
-        return dict(Silhouette=np.nan, DB=np.nan, CH=np.nan, ARI=np.nan, NMI=np.nan)
+        return dict(Silhouette=np.nan, DB=np.nan, CH=np.nan, ARI=np.nan, NMI=np.nan, Dunn=np.nan)
     return dict(
         Silhouette = silhouette_score(ev, lv, metric=metric),
         DB         = davies_bouldin_score(ev, lv),
         CH         = calinski_harabasz_score(ev, lv),
         ARI        = adjusted_rand_score(gv, lv),
         NMI        = normalized_mutual_info_score(gv, lv),
+        Dunn       = dunn_index(ev, lv),
     )
+
+_METHOD_CFG = {
+    # display-name : (dict-key, sklearn-metric, use-pca)
+    "KMeans"      : ("kmeans",      "euclidean", True),
+    "Agg"         : ("agg",         "cosine",    False),
+    "GMM"         : ("gmm",         "euclidean", True),
+    "SBScan"      : ("sbscan",      "euclidean", True),
+    "POS"         : ("pos",         "euclidean", True),
+    "RandAssign"  : ("rand_assign", "euclidean", True),
+    "GSA"         : ("gsa",         "euclidean", True),
+    "RandClust"   : ("rand_clust",  "euclidean", True),
+}
 
 def print_metrics(tr_norm, tr_pca, tr_pred, tr_lbl,
                   te_norm, te_pca, te_pred, te_lbl):
-    for split, en, ep, pred, gt in [
-        ("TRAIN", tr_norm, tr_pca, tr_pred, tr_lbl),
-        ("TEST",  te_norm, te_pca, te_pred, te_lbl),
-    ]:
-        rows = {
-            "KMeans" : evaluate(ep, pred["kmeans"], gt),
-            "Agg"    : evaluate(en, pred["agg"],    gt, "cosine"),
-            "GMM"    : evaluate(ep, pred["gmm"],    gt),
-        }
+    for split, pred, gt in [("TRAIN", tr_pred, tr_lbl), ("TEST", te_pred, te_lbl)]:
+        rows = {}
+        for name, (key, metric, use_pca) in _METHOD_CFG.items():
+            emb_tr = tr_pca if use_pca else tr_norm
+            emb_te = te_pca if use_pca else te_norm
+            emb    = emb_tr if split == "TRAIN" else emb_te
+            rows[name] = evaluate(emb, pred[key], gt, metric)
         logger.info(f"\n── {split} ──────────────────────────────────────")
         logger.info("\n" + pd.DataFrame(rows).T.to_string(float_format=lambda x: f"{x:.4f}"))
 
     logger.info("\nGeneralisation gap  (train ARI − test ARI):")
-    for m, ek, em in [("KMeans", "kmeans", "euclidean"),
-                      ("Agg",    "agg",    "cosine"),
-                      ("GMM",    "gmm",    "euclidean")]:
-        tr_v = evaluate(tr_pca if em=="euclidean" else tr_norm, tr_pred[ek], tr_lbl, em)["ARI"] or 0
-        te_v = evaluate(te_pca if em=="euclidean" else te_norm, te_pred[ek], te_lbl, em)["ARI"] or 0
-        gap  = (tr_v or 0) - (te_v or 0)
-        flag = "good" if gap < 0.10 else "overfit" if gap > 0.20 else "acceptable"
-        logger.info(f"  {m:8s}  train={tr_v:.4f}  test={te_v:.4f}  gap={gap:+.4f}  [{flag}]")
+    for name, (key, metric, use_pca) in _METHOD_CFG.items():
+        emb_tr = tr_pca if use_pca else tr_norm
+        emb_te = te_pca if use_pca else te_norm
+        tr_v   = evaluate(emb_tr, tr_pred[key], tr_lbl, metric)["ARI"] or 0
+        te_v   = evaluate(emb_te, te_pred[key], te_lbl, metric)["ARI"] or 0
+        gap    = (tr_v or 0) - (te_v or 0)
+        flag   = "good" if gap < 0.10 else "overfit" if gap > 0.20 else "acceptable"
+        logger.info(f"  {name:12s}  train={tr_v:.4f}  test={te_v:.4f}  gap={gap:+.4f}  [{flag}]")
 
 # ── VibClustNet diagnostic plots ──────────────────────────────────────────────
 def plot_vibclustnet_diagnostics(model, te_X, te_pred_kmeans, device, figures_dir: Path):
@@ -807,37 +1044,87 @@ def project(pca_emb, tag):
               perplexity=perp, max_iter=1000).fit_transform(pca_emb)
     return ts
 
+_ALL_METHODS = [
+    ("kmeans",      "K-Means"),
+    ("agg",         "Agglomerative"),
+    ("gmm",         "GMM"),
+    ("sbscan",      "SBScan"),
+    ("pos",         "PSO"),
+    ("rand_assign", "RandomAssign"),
+    ("gsa",         "GravitationalSearch"),
+    ("rand_clust",  "RandomClustering"),
+]
+
 def _plot_proj_grid(coords, proj_name, pred, c2s, gt, fname):
-    """1-row × 4-col: K-Means | Agglomerative | Spectral | Ground Truth."""
-    fig, axes = plt.subplots(1, 4, figsize=(26, 6))
+    """3×3 grid: 8 clustering methods + Ground Truth."""
+    ncols, n_panels = 3, len(_ALL_METHODS) + 1          # +1 for ground truth
+    nrows = (n_panels + ncols - 1) // ncols
+    fig, axes = plt.subplots(nrows, ncols, figsize=(ncols * 8, nrows * 6))
     fig.suptitle(f"{proj_name} — Test split (super-classes)",
                  fontsize=13, fontweight="bold")
-    methods = [
-        ("kmeans", lambda lbl: f"{super_name(c2s['kmeans'].get(lbl,'?'))} [c{lbl}]", "K-Means"),
-        ("agg",    lambda lbl: f"{super_name(c2s['agg'].get(lbl,'?'))} [c{lbl}]",    "Agglomerative"),
-        ("gmm",    lambda lbl: f"{super_name(c2s['gmm'].get(lbl,'?'))} [c{lbl}]",    "GMM"),
-    ]
-    for col, (key, leg_fn, title) in enumerate(methods):
-        _scatter(axes[col], coords, pred[key], leg_fn,
+    axes_flat = iter(axes.flat)
+    for key, title in _ALL_METHODS:
+        ax     = next(axes_flat)
+        leg_fn = (lambda lbl, k=key:
+                  f"{super_name(c2s[k].get(lbl, '?'))} [c{lbl}]")
+        _scatter(ax, coords, pred[key], leg_fn,
                  f"{proj_name} — {title}", proj_name)
-    # Ground truth
-    ax = axes[3]
+    # Ground truth panel
+    ax = next(axes_flat)
     for i, sid in enumerate(sorted(np.unique(gt))):
         m = np.asarray(gt) == sid
-        ax.scatter(coords[m,0], coords[m,1],
-                   c=COLORS[i % len(COLORS)], alpha=0.6, s=8, label=super_name(sid))
+        ax.scatter(coords[m, 0], coords[m, 1],
+                   c=COLORS[i % len(COLORS)], alpha=0.6, s=8,
+                   label=super_name(sid))
     ax.set_title(f"{proj_name} — Ground Truth", fontsize=9, fontweight="bold")
     ax.set_xlabel(f"{proj_name} 1"); ax.set_ylabel(f"{proj_name} 2")
-    ax.legend(fontsize=6, markerscale=1.5, loc="best", framealpha=0.6, title="Super-class")
+    ax.legend(fontsize=6, markerscale=1.5, loc="best",
+              framealpha=0.6, title="Super-class")
     ax.grid(alpha=0.2)
+    # Hide any leftover axes
+    for ax in axes_flat:
+        ax.set_visible(False)
     plt.tight_layout()
     plt.savefig(fname, dpi=150, bbox_inches="tight")
     plt.close()
     logger.info(f"  Saved {fname}")
 
+
+def plot_tsne_individual(ts, pred, c2s, gt, figures_dir: Path):
+    """Save one t-SNE figure per clustering method plus one for ground truth."""
+    for key, title in _ALL_METHODS:
+        fig, ax = plt.subplots(figsize=(8, 6))
+        leg_fn  = (lambda lbl, k=key:
+                   f"{super_name(c2s[k].get(lbl, '?'))} [c{lbl}]")
+        _scatter(ax, ts, pred[key], leg_fn, f"t-SNE — {title}", "t-SNE")
+        plt.tight_layout()
+        fname = figures_dir / f"tsne_{title}_{RUN_TS}.png"
+        plt.savefig(fname, dpi=150, bbox_inches="tight")
+        plt.close()
+        logger.info(f"  Saved {fname}")
+    # Ground truth
+    fig, ax = plt.subplots(figsize=(8, 6))
+    for i, sid in enumerate(sorted(np.unique(gt))):
+        m = np.asarray(gt) == sid
+        ax.scatter(ts[m, 0], ts[m, 1],
+                   c=COLORS[i % len(COLORS)], alpha=0.6, s=8,
+                   label=super_name(sid))
+    ax.set_title("t-SNE — Ground Truth", fontsize=9, fontweight="bold")
+    ax.set_xlabel("t-SNE 1"); ax.set_ylabel("t-SNE 2")
+    ax.legend(fontsize=6, markerscale=1.5, loc="best",
+              framealpha=0.6, title="Super-class")
+    ax.grid(alpha=0.2)
+    plt.tight_layout()
+    fname = figures_dir / f"tsne_GroundTruth_{RUN_TS}.png"
+    plt.savefig(fname, dpi=150, bbox_inches="tight")
+    plt.close()
+    logger.info(f"  Saved {fname}")
+
+
 def plot_grid(ts, pred, c2s, gt, figures_dir: Path):
     fname = figures_dir / f"18_tsne_test_clusters_{RUN_TS}.png"
     _plot_proj_grid(ts, "t-SNE", pred, c2s, gt, fname=fname)
+    plot_tsne_individual(ts, pred, c2s, gt, figures_dir)
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main():
@@ -896,6 +1183,9 @@ def main():
 
     logger.info("\n  K-Means cluster → surface (train):")
     for cid, sid in sorted(tr_c2s["kmeans"].items()):
+        logger.info(f"    cluster {cid:2d} → {super_name(sid)}")
+    logger.info("\n  SBScan cluster → surface (train):")
+    for cid, sid in sorted(tr_c2s["sbscan"].items()):
         logger.info(f"    cluster {cid:2d} → {super_name(sid)}")
 
     logger.info("\n[8] Metrics")
