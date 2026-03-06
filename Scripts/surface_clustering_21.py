@@ -344,8 +344,8 @@ class VibClustNet(nn.Module):
         d2 = self.dec_conv2(d1)                   # (B, 32, T)
         recon = self.dec_out(d2)                  # (B, 3, T)
         dec_inter = {
-            "d_after_upsample": h.mean(dim=-1),    # (B, 160) — mirrors after_mstcb3
-            "d_after_conv1"   : d1.mean(dim=-1),   # (B, 160) — mirrors after_mstcb12 mean
+            "d_after_upsample": h.mean(dim=-1),    # (B, 80) — mirrors after_mstcb3
+            "d_after_conv1"   : d1.mean(dim=-1),   # (B, 80) — mirrors after_mstcb12 mean
         }
         return recon, dec_inter
 
@@ -375,11 +375,11 @@ def multi_rec_loss(x_orig, recon, enc_inter, dec_inter):
     T = x_orig.shape[-1]
     # L1: main reconstruction
     l1 = F.mse_loss(recon, x_orig) / (3 * T)
-    # L2: encoder bottleneck ↔ decoder upsample output  (both 160-dim, pooled)
-    l2 = F.mse_loss(enc_inter["after_mstcb3"], dec_inter["d_after_upsample"]) / 160
-    # L3: encoder stage-1 mean (avg 3 axes → 160-dim) ↔ decoder conv1 output
-    enc_s1 = enc_inter["after_mstcb12"].mean(dim=1)   # (B, 160)
-    l3 = F.mse_loss(enc_s1, dec_inter["d_after_conv1"]) / 160
+    # L2: encoder bottleneck ↔ decoder upsample output  (both 80-dim, pooled)
+    l2 = F.mse_loss(enc_inter["after_mstcb3"], dec_inter["d_after_upsample"]) / 80
+    # L3: encoder stage-1 mean (avg 3 axes → 80-dim) ↔ decoder conv1 output
+    enc_s1 = enc_inter["after_mstcb12"].mean(dim=1)   # (B, 80)
+    l3 = F.mse_loss(enc_s1, dec_inter["d_after_conv1"]) / 80
     return l1 + 0.5 * l2 + 0.5 * l3
 
 
