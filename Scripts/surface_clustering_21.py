@@ -413,51 +413,21 @@ def load_windowed_data(cfg):
     print(f"  Type: {type(raw).__name__}", end="")
 
     # ── Normalise payload → arr (N, 3, T) + labels ────────────────────────────
-    if isinstance(raw, np.ndarray):
-        print(f"  shape={raw.shape}")
-        arr = raw.astype(np.float32)
-        if arr.ndim == 3 and arr.shape[-1] == 3:
-            arr = arr.transpose(0, 2, 1)          # (N, T, 3) → (N, 3, T)
-        labels = np.full(len(arr), cfg["unlabeled_id"], dtype=int)
+    
+    # List of DataFrames — columns: valueX, valueY, valueZ, surface_id
+    print(f"  ({len(raw)} windows, items are {type(raw[0]).__name__})")
+    windows, labels = [], []
+    for item in raw:
+        win = item["window"]        # DataFrame
+        xyz = win[["valueX","valueY","valueZ"]].to_numpy(dtype=np.float32).T  # (3,T)
 
-    elif isinstance(raw, dict):
-        print(f"  keys={list(raw.keys())}")
-        dk = next(k for k in raw if k.lower() in ["data", "x", "windows"])
-        lk = next((k for k in raw if k.lower() in ["label", "labels", "y", "surface_id"]), None)
-        arr = np.array(raw[dk], dtype=np.float32)
-        if arr.ndim == 3 and arr.shape[-1] == 3:
-            arr = arr.transpose(0, 2, 1)
-        labels = (np.array(raw[lk], dtype=int) if lk
-                  else np.full(len(arr), cfg["unlabeled_id"], dtype=int))
+        sid = (int(item["surface_id"].iloc[0])
+                if "surface_id" in item.columns else cfg["unlabeled_id"])
 
-    elif isinstance(raw, list):
-        # List of DataFrames — columns: valueX, valueY, valueZ, surface_id
-        print(f"  ({len(raw)} windows, items are {type(raw[0]).__name__})")
-        windows, labels = [], []
-        for item in raw:
-            if isinstance(item, pd.DataFrame):
-                win = item["window"]        # DataFrame
-                xyz = win[["valueX","valueY","valueZ"]].to_numpy(dtype=np.float32).T  # (3,T)
-
-                sid = (int(item["surface_id"].iloc[0])
-                       if "surface_id" in item.columns else cfg["unlabeled_id"])
-            elif isinstance(item, dict):
-                # {"window": DataFrame(valueX,valueY,valueZ), "surface_id": int}
-                win = item["window"]
-                xyz = np.asarray(win[["valueX", "valueY", "valueZ"]], dtype=np.float32).T  # (3,T)
-                sid_val = item.get("surface_id", cfg["unlabeled_id"])
-                sid = int(sid_val[0]) if hasattr(sid_val, "__len__") else int(sid_val)
-            else:
-                a   = np.asarray(item, dtype=np.float32)
-                xyz = a if a.shape[0] == 3 else a.T
-                sid = cfg["unlabeled_id"]
-            windows.append(xyz)
-            labels.append(sid)
-        arr    = np.stack(windows).astype(np.float32)   # (N, 3, T)
-        labels = np.array(labels, dtype=int)
-
-    else:
-        raise ValueError(f"Unsupported pkl content type: {type(raw)}")
+        windows.append(xyz)
+        labels.append(sid)
+    arr    = np.stack(windows).astype(np.float32)   # (N, 3, T)
+    labels = np.array(labels, dtype=int)
 
     print(f"\n  Windows: {arr.shape}  Labels: {labels.shape}")
 
