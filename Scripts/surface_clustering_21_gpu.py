@@ -53,7 +53,7 @@ CONFIG = {
     "pca_variance"       : 0.95,
 
     # raw windowed data
-    "windowed_csv"       : Path("../Datasets/ExtractedFeatures/labeled_accelerometer_windows.csv"),
+    "windowed_csv"       : Path("../Datasets/ExtractedFeatures/labeled_accelerometer_raw_windows.csv"),
 
     # VibClustNet hyper-parameters
     "vcn_epochs"         : 150,
