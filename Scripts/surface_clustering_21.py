@@ -436,7 +436,9 @@ def load_windowed_data(cfg):
         windows, labels = [], []
         for item in raw:
             if isinstance(item, pd.DataFrame):
-                xyz = np.asarray(item[["valueX", "valueY", "valueZ"]], dtype=np.float32).T  # (3,T)
+                win = item["window"]        # DataFrame
+                xyz = win[["valueX","valueY","valueZ"]].to_numpy(dtype=np.float32).T  # (3,T)
+
                 sid = (int(item["surface_id"].iloc[0])
                        if "surface_id" in item.columns else cfg["unlabeled_id"])
             elif isinstance(item, dict):
