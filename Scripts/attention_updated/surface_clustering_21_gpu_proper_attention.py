@@ -252,7 +252,7 @@ def stratified_split(X, y, test_size, seed):
 
 # ── Embeddings ────────────────────────────────────────────────────────────────
 @torch.no_grad()
-def embed(model, X, device, bs=512):
+def embed(model, X, device, bs=32):
     model.eval()
     out = [model.embed(torch.tensor(X[i:i+bs]).to(device)).cpu()
            for i in range(0, len(X), bs)]
