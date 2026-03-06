@@ -90,7 +90,7 @@ CONFIG = {
     "windowed_csv"       : Path("../Datasets/ExtractedFeatures/labeled_accelerometer_raw_windows.csv"),
 
     # VibClustNet hyper-parameters
-    "vcn_epochs"         : 150,
+    "vcn_epochs"         : 500,
     "vcn_batch_size"     : 32,
     "vcn_lr"             : 1e-3,
     "vcn_patience"       : 50,
