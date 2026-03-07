@@ -79,7 +79,7 @@ CONFIG = {
     "pca_variance"           : 0.95,
 
     # VibClustNet hyper-parameters
-    "vcn_epochs"             : 150,
+    "vcn_epochs"             : 50,
     "vcn_batch_size"         : 32,
     "vcn_lr"                 : 1e-3,
     "vcn_patience"           : 50,
