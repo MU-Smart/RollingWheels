@@ -182,7 +182,11 @@ class VibClustNet(nn.Module):
         self.faag     = FAAG(3 * CH, T)
         self.mstcb3   = MSTCB(3 * CH, CH)
         self.enc_head = nn.Linear(CH, emb_dim)
+        # Decoder: projects embedding back to CH channels, then reconstructs
+        # through time via conv.  Forces ALL information through the bottleneck.
+        self.dec_proj = nn.Linear(emb_dim, CH)
         self.rec_head = nn.Sequential(
+            nn.Conv1d(CH, CH, 7, padding="same"), nn.ReLU(),
             nn.Conv1d(CH, CH, 3, padding="same"), nn.ReLU(),
             nn.Conv1d(CH, CH // 2, 3, padding="same"), nn.ReLU(),
             nn.Conv1d(CH // 2, 3, 1),
@@ -207,19 +211,22 @@ class VibClustNet(nn.Module):
         }
         return emb, enc_inter
 
-    def _decode(self, after3):
-        recon = self.rec_head(after3)
+    def _decode(self, emb, T):
+        h = self.dec_proj(emb)                  # (batch, CH)
+        h = h.unsqueeze(-1).expand(-1, -1, T)   # (batch, CH, T)
+        recon = self.rec_head(h)                 # (batch, 3, T)
         dec_inter = {
-            "d_after_upsample": after3.mean(dim=-1),
-            "d_after_conv1"   : after3.mean(dim=-1),
+            "d_after_upsample": h.mean(dim=-1),
+            "d_after_conv1"   : h.mean(dim=-1),
         }
         return recon, dec_inter
 
     def forward(self, x):
         if x.shape[1] != 3:
             x = x.permute(0, 2, 1)
+        T = x.shape[-1]
         emb, enc_inter = self._encode(x)
-        recon, dec_inter = self._decode(enc_inter["after3_temporal"])
+        recon, dec_inter = self._decode(emb, T)
         return recon, emb, enc_inter, dec_inter
 
     def embed(self, x):
