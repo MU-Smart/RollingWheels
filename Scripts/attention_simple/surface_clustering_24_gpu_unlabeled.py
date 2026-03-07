@@ -360,29 +360,16 @@ class VibClustNet(nn.Module):
                 nn.Linear(emb_dim // 2, n_classes),
             ) if n_classes > 0 else None
         )
-        # Decoder — progressive 3-stage upsampling
-        # Upsampling from size 1 (single-shot) produces a flat constant signal;
-        # convolutions cannot recover temporal oscillations from that, causing the
-        # reconstruction loss to collapse to the log-cosh(0) floor (~0.35) and stall.
-        # Instead we expand to S initial frames and upsample in three stages so each
-        # conv layer has real temporal variation to work with.
-        S = 8                                     # initial time frames
-        self._dec_S = S
-        self.dec_linear = nn.Linear(emb_dim, CH * S)
-        self.dec_up1 = nn.Sequential(
-            nn.Upsample(size=max(S, T // 4), mode="linear", align_corners=False),
-            nn.Conv1d(CH, CH, 5, padding="same"), nn.BatchNorm1d(CH), nn.ReLU(),
+        # Reconstruction head — applied to after3 (B, CH, T) BEFORE global pooling.
+        # Global average pooling discards all temporal information; reconstructing from
+        # `emb` forces the decoder to predict near-zero on Z-normalised signals (the
+        # log-cosh floor at ~0.35) because every window maps to the same class vector.
+        # Reconstructing from the full-resolution temporal feature map avoids this.
+        self.rec_head = nn.Sequential(
+            nn.Conv1d(CH, CH, 3, padding="same"), nn.ReLU(),
+            nn.Conv1d(CH, CH // 2, 3, padding="same"), nn.ReLU(),
+            nn.Conv1d(CH // 2, 3, 1),
         )
-        self.dec_up2 = nn.Sequential(
-            nn.Upsample(size=max(T // 4, T // 2), mode="linear", align_corners=False),
-            nn.Conv1d(CH, CH, 5, padding="same"), nn.BatchNorm1d(CH), nn.ReLU(),
-        )
-        self.dec_up3 = nn.Sequential(
-            nn.Upsample(size=T, mode="linear", align_corners=False),
-            nn.Conv1d(CH, CH // 2, 5, padding="same"), nn.BatchNorm1d(CH // 2), nn.ReLU(),
-            nn.Conv1d(CH // 2, CH // 4, 3, padding="same"), nn.ReLU(),
-        )
-        self.dec_out = nn.Conv1d(CH // 4, 3, 1)
 
     def _encode(self, x):
         """x must be (B, 3, T). Returns emb (B, emb_dim) + enc_inter dict."""
@@ -395,25 +382,21 @@ class VibClustNet(nn.Module):
         pooled = after3.mean(dim=-1)                            # (B, 160)
         emb    = self.enc_head(pooled)                          # (B, emb_dim)
         enc_inter = {
-            "after_mstcb12": torch.stack([a.mean(-1) for a in axes], dim=1),  # (B, 3, 160)
-            "after_mstcb3" : pooled,                                           # (B, 160)
-            "caim_weights" : caim_w,                                           # (B, 3, 3)
-            "t_attn"       : t_attn,                                           # (B, 240, T)
-            "f_attn"       : f_attn,                                           # (B, 240, T)
+            "after_mstcb12"  : torch.stack([a.mean(-1) for a in axes], dim=1),  # (B, 3, 96)
+            "after_mstcb3"   : pooled,                                           # (B, 96)
+            "caim_weights"   : caim_w,                                           # (B, 3, 3)
+            "t_attn"         : t_attn,                                           # (B, 288, T)
+            "f_attn"         : f_attn,                                           # (B, 288, T)
+            "after3_temporal": after3,                                           # (B, 96, T)
         }
         return emb, enc_inter
 
-    def _decode(self, emb):
-        """emb: (B, emb_dim). Returns recon (B, 3, T) + dec_inter dict."""
-        B  = emb.shape[0]
-        h  = self.dec_linear(emb).view(B, -1, self._dec_S)  # (B, CH, S)
-        h  = self.dec_up1(h)                                 # (B, CH, T//4)
-        d1 = self.dec_up2(h)                                 # (B, CH, T//2)
-        d2 = self.dec_up3(d1)                                # (B, CH//4, T)
-        recon = self.dec_out(d2)                             # (B, 3, T)
+    def _decode(self, after3):
+        """after3: (B, CH, T) temporal features before global pool. Returns recon (B, 3, T)."""
+        recon = self.rec_head(after3)                        # (B, 3, T)
         dec_inter = {
-            "d_after_upsample": h.mean(dim=-1),    # (B, CH) — mirrors after_mstcb3
-            "d_after_conv1"   : d1.mean(dim=-1),   # (B, CH) — mirrors after_mstcb12 mean
+            "d_after_upsample": after3.mean(dim=-1),
+            "d_after_conv1"   : after3.mean(dim=-1),
         }
         return recon, dec_inter
 
@@ -421,7 +404,7 @@ class VibClustNet(nn.Module):
         if x.shape[1] != 3:
             x = x.permute(0, 2, 1)
         emb, enc_inter = self._encode(x)
-        recon, dec_inter = self._decode(emb)
+        recon, dec_inter = self._decode(enc_inter["after3_temporal"])
         return recon, emb, enc_inter, dec_inter
 
     def embed(self, x):
