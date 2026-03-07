@@ -72,7 +72,7 @@ logger = logging.getLogger("vcn")   # module-level; populated after setup_loggin
 
 # ── Config ───────────────────────────────────────────────────────────────────
 CONFIG = {
-    "surface_types_csv"  : Path("../Datasets/surface_types.csv"),
+    "surface_types_csv"  : Path("../../Datasets/surface_types.csv"),
     "output_csv"         : Path("24_unlabeled_predictions.csv"),
     "unlabeled_id"       : 0,          # surface_id value meaning "no label"
 
@@ -360,12 +360,29 @@ class VibClustNet(nn.Module):
                 nn.Linear(emb_dim // 2, n_classes),
             ) if n_classes > 0 else None
         )
-        # Decoder (mirror, simplified)
-        self.dec_linear   = nn.Linear(emb_dim, CH)
-        self.dec_upsample = nn.Upsample(size=T, mode="linear", align_corners=False)
-        self.dec_conv1    = nn.Sequential(nn.Conv1d(CH, CH, 3, padding="same"), nn.ReLU())
-        self.dec_conv2    = nn.Sequential(nn.Conv1d(CH, CH // 3, 3, padding="same"), nn.ReLU())
-        self.dec_out      = nn.Conv1d(CH // 3, 3, 1)
+        # Decoder — progressive 3-stage upsampling
+        # Upsampling from size 1 (single-shot) produces a flat constant signal;
+        # convolutions cannot recover temporal oscillations from that, causing the
+        # reconstruction loss to collapse to the log-cosh(0) floor (~0.35) and stall.
+        # Instead we expand to S initial frames and upsample in three stages so each
+        # conv layer has real temporal variation to work with.
+        S = 8                                     # initial time frames
+        self._dec_S = S
+        self.dec_linear = nn.Linear(emb_dim, CH * S)
+        self.dec_up1 = nn.Sequential(
+            nn.Upsample(size=max(S, T // 4), mode="linear", align_corners=False),
+            nn.Conv1d(CH, CH, 5, padding="same"), nn.BatchNorm1d(CH), nn.ReLU(),
+        )
+        self.dec_up2 = nn.Sequential(
+            nn.Upsample(size=max(T // 4, T // 2), mode="linear", align_corners=False),
+            nn.Conv1d(CH, CH, 5, padding="same"), nn.BatchNorm1d(CH), nn.ReLU(),
+        )
+        self.dec_up3 = nn.Sequential(
+            nn.Upsample(size=T, mode="linear", align_corners=False),
+            nn.Conv1d(CH, CH // 2, 5, padding="same"), nn.BatchNorm1d(CH // 2), nn.ReLU(),
+            nn.Conv1d(CH // 2, CH // 4, 3, padding="same"), nn.ReLU(),
+        )
+        self.dec_out = nn.Conv1d(CH // 4, 3, 1)
 
     def _encode(self, x):
         """x must be (B, 3, T). Returns emb (B, emb_dim) + enc_inter dict."""
@@ -388,14 +405,15 @@ class VibClustNet(nn.Module):
 
     def _decode(self, emb):
         """emb: (B, emb_dim). Returns recon (B, 3, T) + dec_inter dict."""
-        h  = self.dec_linear(emb).unsqueeze(-1)   # (B, 80, 1)
-        h  = self.dec_upsample(h)                 # (B, 80, T)
-        d1 = self.dec_conv1(h)                    # (B, 80, T)
-        d2 = self.dec_conv2(d1)                   # (B, 32, T)
-        recon = self.dec_out(d2)                  # (B, 3, T)
+        B  = emb.shape[0]
+        h  = self.dec_linear(emb).view(B, -1, self._dec_S)  # (B, CH, S)
+        h  = self.dec_up1(h)                                 # (B, CH, T//4)
+        d1 = self.dec_up2(h)                                 # (B, CH, T//2)
+        d2 = self.dec_up3(d1)                                # (B, CH//4, T)
+        recon = self.dec_out(d2)                             # (B, 3, T)
         dec_inter = {
-            "d_after_upsample": h.mean(dim=-1),    # (B, 80) — mirrors after_mstcb3
-            "d_after_conv1"   : d1.mean(dim=-1),   # (B, 80) — mirrors after_mstcb12 mean
+            "d_after_upsample": h.mean(dim=-1),    # (B, CH) — mirrors after_mstcb3
+            "d_after_conv1"   : d1.mean(dim=-1),   # (B, CH) — mirrors after_mstcb12 mean
         }
         return recon, dec_inter
 
