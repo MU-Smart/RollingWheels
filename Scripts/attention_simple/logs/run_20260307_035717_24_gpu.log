@@ -1,0 +1,73 @@
+2026-03-07 03:57:17  INFO      Log file: /home/mahmudm2/codebase/RollingWheels/Scripts/attention_simple/logs/run_20260307_035717_24_gpu.log
+2026-03-07 03:57:17  INFO      Device: cuda
+2026-03-07 03:57:17  INFO      Run timestamp: 20260307_035717
+2026-03-07 03:57:17  INFO      Figures dir  : /home/mahmudm2/codebase/RollingWheels/Scripts/attention_simple/figures
+2026-03-07 03:57:17  INFO      Models dir   : /home/mahmudm2/codebase/RollingWheels/Scripts/attention_simple/models
+2026-03-07 03:57:17  INFO      
+[0] Surface names
+2026-03-07 03:57:17  WARNING     WARNING: [Errno 2] No such file or directory: '../Datasets/surface_types.csv'
+2026-03-07 03:57:17  INFO      
+[1] Load windowed data (labeled + unlabeled)
+2026-03-07 03:57:17  INFO        Loading: ../../Datasets/ExtractedFeatures/labeled_accelerometer_raw_windows.csv
+2026-03-07 03:57:22  INFO        Rows: 8153088  Windows: 7962
+2026-03-07 03:57:26  INFO        Labeled windows: 7962  Classes: [0, 1, 2, 3, 4, 6, 7]
+2026-03-07 03:57:26  INFO        Loading: ../../Datasets/ExtractedFeatures/unlabeled_accelerometer_raw_windows.csv
+2026-03-07 03:57:42  INFO        Rows: 24242176  Windows: 23674
+2026-03-07 03:57:51  INFO        Unlabeled windows: 23674
+2026-03-07 03:57:51  INFO        Stratified split (labeled only):
+2026-03-07 03:57:51  INFO          Surface 0                     :  1109 train   277 test
+2026-03-07 03:57:51  INFO          Surface 1                     :   671 train   167 test
+2026-03-07 03:57:51  INFO          Surface 2                     :   905 train   226 test
+2026-03-07 03:57:51  INFO          Surface 3                     :  1719 train   429 test
+2026-03-07 03:57:51  INFO          Surface 4                     :   958 train   239 test
+2026-03-07 03:57:51  INFO          Surface 6                     :   454 train   113 test
+2026-03-07 03:57:51  INFO          Surface 7                     :   556 train   139 test
+2026-03-07 03:57:51  INFO        Training set: 6372 labeled + 23674 unlabeled = 30046 total
+2026-03-07 03:57:51  INFO      
+[2] Super-class distribution (labeled train):
+2026-03-07 03:57:51  INFO          Paving Blocks (Smooth) / Indoor Tile: 1109 windows
+2026-03-07 03:57:51  INFO          Concrete Sidewalk             : 671 windows
+2026-03-07 03:57:51  INFO          Brick (Smooth + Rough)        : 905 windows
+2026-03-07 03:57:51  INFO          Asphalt + Indoor Carpet       : 1719 windows
+2026-03-07 03:57:51  INFO          Indoor Linoleum               : 958 windows
+2026-03-07 03:57:51  INFO          Curb (Up + Down)              : 454 windows
+2026-03-07 03:57:51  INFO          Rect. Tiles / Paving Blocks (Rough): 556 windows
+2026-03-07 03:57:51  INFO      
+[3] Train VibClustNet autoencoder
+2026-03-07 03:57:53  INFO        Parameters: 520,732
+2026-03-07 03:58:44  INFO        [VCN]   1/150  rec=0.3516  cls=1.3669  val_rec=0.3552  val_cls=1.6484  lr=1.00e-03 *
+2026-03-07 03:59:32  INFO        [VCN]   2/150  rec=0.3516  cls=0.9874  val_rec=0.3552  val_cls=1.1803  lr=1.00e-03 *
+2026-03-07 04:00:20  INFO        [VCN]   3/150  rec=0.3516  cls=0.8091  val_rec=0.3552  val_cls=0.9428  lr=1.00e-03 *
+2026-03-07 04:01:08  INFO        [VCN]   4/150  rec=0.3516  cls=0.7048  val_rec=0.3552  val_cls=0.6493  lr=1.00e-03 *
+2026-03-07 04:01:56  INFO        [VCN]   5/150  rec=0.3516  cls=0.6035  val_rec=0.3552  val_cls=0.6734  lr=1.00e-03
+2026-03-07 04:02:44  INFO        [VCN]   6/150  rec=0.3516  cls=0.5352  val_rec=0.3552  val_cls=0.6127  lr=1.00e-03 *
+2026-03-07 04:03:31  INFO        [VCN]   7/150  rec=0.3516  cls=0.4690  val_rec=0.3552  val_cls=0.5538  lr=1.00e-03 *
+2026-03-07 04:04:19  INFO        [VCN]   8/150  rec=0.3516  cls=0.4161  val_rec=0.3552  val_cls=0.3632  lr=1.00e-03 *
+2026-03-07 04:05:05  INFO        [VCN]   9/150  rec=0.3516  cls=0.3421  val_rec=0.3552  val_cls=0.3421  lr=1.00e-03 *
+2026-03-07 04:05:51  INFO        [VCN]  10/150  rec=0.3516  cls=0.3146  val_rec=0.3551  val_cls=0.3664  lr=1.00e-03
+2026-03-07 04:05:53  INFO          NMI (labeled, K=7): 0.8000
+2026-03-07 04:06:41  INFO        [VCN]  11/150  rec=0.3516  cls=0.2779  val_rec=0.3551  val_cls=0.3476  lr=1.00e-03
+2026-03-07 04:07:29  INFO        [VCN]  12/150  rec=0.3516  cls=0.2352  val_rec=0.3551  val_cls=0.3382  lr=1.00e-03 *
+2026-03-07 04:08:17  INFO        [VCN]  13/150  rec=0.3516  cls=0.2086  val_rec=0.3551  val_cls=0.6480  lr=1.00e-03
+2026-03-07 04:09:05  INFO        [VCN]  14/150  rec=0.3516  cls=0.1796  val_rec=0.3551  val_cls=0.3670  lr=1.00e-03
+2026-03-07 04:09:54  INFO        [VCN]  15/150  rec=0.3516  cls=0.1697  val_rec=0.3551  val_cls=0.2663  lr=1.00e-03 *
+2026-03-07 04:10:42  INFO        [VCN]  16/150  rec=0.3516  cls=0.1299  val_rec=0.3551  val_cls=0.2959  lr=1.00e-03
+2026-03-07 04:11:30  INFO        [VCN]  17/150  rec=0.3516  cls=0.1467  val_rec=0.3551  val_cls=0.2131  lr=1.00e-03 *
+2026-03-07 04:12:18  INFO        [VCN]  18/150  rec=0.3516  cls=0.1265  val_rec=0.3551  val_cls=0.2846  lr=1.00e-03
+2026-03-07 04:13:06  INFO        [VCN]  19/150  rec=0.3516  cls=0.0952  val_rec=0.3552  val_cls=0.2533  lr=1.00e-03
+2026-03-07 04:13:54  INFO        [VCN]  20/150  rec=0.3516  cls=0.1134  val_rec=0.3551  val_cls=0.2999  lr=1.00e-03
+2026-03-07 04:13:56  INFO          NMI (labeled, K=7): 0.9312
+2026-03-07 04:14:45  INFO        [VCN]  21/150  rec=0.3516  cls=0.0996  val_rec=0.3551  val_cls=0.4143  lr=1.00e-03
+2026-03-07 04:15:33  INFO        [VCN]  22/150  rec=0.3516  cls=0.0837  val_rec=0.3551  val_cls=0.3521  lr=1.00e-03
+2026-03-07 04:16:21  INFO        [VCN]  23/150  rec=0.3516  cls=0.0736  val_rec=0.3551  val_cls=0.3971  lr=1.00e-03
+2026-03-07 04:17:09  INFO        [VCN]  24/150  rec=0.3516  cls=0.0951  val_rec=0.3552  val_cls=0.2571  lr=1.00e-03
+2026-03-07 04:17:57  INFO        [VCN]  25/150  rec=0.3516  cls=0.0651  val_rec=0.3551  val_cls=0.2103  lr=1.00e-03 *
+2026-03-07 04:18:45  INFO        [VCN]  26/150  rec=0.3516  cls=0.0714  val_rec=0.3551  val_cls=0.2309  lr=1.00e-03
+2026-03-07 04:19:33  INFO        [VCN]  27/150  rec=0.3516  cls=0.0717  val_rec=0.3551  val_cls=0.2179  lr=1.00e-03
+2026-03-07 04:20:21  INFO        [VCN]  28/150  rec=0.3516  cls=0.0626  val_rec=0.3551  val_cls=0.2730  lr=1.00e-03
+2026-03-07 04:21:09  INFO        [VCN]  29/150  rec=0.3516  cls=0.0697  val_rec=0.3551  val_cls=0.2319  lr=1.00e-03
+2026-03-07 04:21:57  INFO        [VCN]  30/150  rec=0.3516  cls=0.0733  val_rec=0.3551  val_cls=0.1937  lr=1.00e-03 *
+2026-03-07 04:21:59  INFO          NMI (labeled, K=7): 0.9620
+2026-03-07 04:22:48  INFO        [VCN]  31/150  rec=0.3516  cls=0.0508  val_rec=0.3551  val_cls=0.2252  lr=1.00e-03
+2026-03-07 04:23:36  INFO        [VCN]  32/150  rec=0.3516  cls=0.0559  val_rec=0.3551  val_cls=0.2232  lr=1.00e-03
+2026-03-07 04:24:24  INFO        [VCN]  33/150  rec=0.3516  cls=0.0676  val_rec=0.3551  val_cls=0.2237  lr=1.00e-03
