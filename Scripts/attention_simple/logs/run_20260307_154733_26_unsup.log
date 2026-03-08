@@ -1,0 +1,110 @@
+2026-03-07 15:47:33  INFO      Log file: /home/mahmudm2/codebase/RollingWheels/Scripts/attention_simple/logs/run_20260307_154733_26_unsup.log
+2026-03-07 15:47:34  INFO      Device: cuda
+2026-03-07 15:47:34  INFO      Run timestamp: 20260307_154733
+2026-03-07 15:47:34  INFO      
+[1] Load all windowed data (no labels)
+2026-03-07 15:47:34  INFO        Loading: ../../Datasets/ExtractedFeatures/labeled_accelerometer_raw_windows.csv
+2026-03-07 15:47:39  INFO        Rows: 8153088  Windows: 7962
+2026-03-07 15:47:43  INFO        Loading: ../../Datasets/ExtractedFeatures/unlabeled_accelerometer_raw_windows.csv
+2026-03-07 15:47:52  INFO        Rows: 24242176  Windows: 23674
+2026-03-07 15:48:00  INFO        Total windows: 31636
+2026-03-07 15:48:00  INFO        Train: 25309  Test: 6327
+2026-03-07 15:48:00  INFO        Window length T=1024
+2026-03-07 15:48:00  INFO      
+[2] Train VibClustNet autoencoder (reconstruction only)
+2026-03-07 15:48:02  INFO        Parameters: 581,236
+2026-03-07 15:48:43  INFO        [VCN]   1/50  rec=0.3518  val_rec=0.3514  lr=1.00e-03 *
+2026-03-07 15:49:24  INFO        [VCN]   2/50  rec=0.3517  val_rec=0.3513  lr=1.00e-03 *
+2026-03-07 15:50:01  INFO        [VCN]   3/50  rec=0.3517  val_rec=0.3514  lr=1.00e-03
+2026-03-07 15:50:38  INFO        [VCN]   4/50  rec=0.3517  val_rec=0.3513  lr=1.00e-03 *
+2026-03-07 15:51:19  INFO        [VCN]   5/50  rec=0.3517  val_rec=0.3513  lr=1.00e-03 *
+2026-03-07 15:51:59  INFO        [VCN]   6/50  rec=0.3516  val_rec=0.3510  lr=1.00e-03 *
+2026-03-07 15:52:38  INFO        [VCN]   7/50  rec=0.3512  val_rec=0.3503  lr=1.00e-03 *
+2026-03-07 15:53:17  INFO        [VCN]   8/50  rec=0.3507  val_rec=0.3503  lr=1.00e-03 *
+2026-03-07 15:53:57  INFO        [VCN]   9/50  rec=0.3505  val_rec=0.3500  lr=1.00e-03 *
+2026-03-07 15:54:38  INFO        [VCN]  10/50  rec=0.3504  val_rec=0.3500  lr=1.00e-03 *
+2026-03-07 15:55:19  INFO        [VCN]  11/50  rec=0.3503  val_rec=0.3498  lr=1.00e-03 *
+2026-03-07 15:55:58  INFO        [VCN]  12/50  rec=0.3502  val_rec=0.3498  lr=1.00e-03 *
+2026-03-07 15:56:37  INFO        [VCN]  13/50  rec=0.3502  val_rec=0.3498  lr=1.00e-03
+2026-03-07 15:57:16  INFO        [VCN]  14/50  rec=0.3502  val_rec=0.3498  lr=1.00e-03 *
+2026-03-07 15:57:57  INFO        [VCN]  15/50  rec=0.3502  val_rec=0.3498  lr=1.00e-03
+2026-03-07 15:58:38  INFO        [VCN]  16/50  rec=0.3499  val_rec=0.3495  lr=1.00e-03 *
+2026-03-07 15:59:18  INFO        [VCN]  17/50  rec=0.3497  val_rec=0.3490  lr=1.00e-03 *
+2026-03-07 15:59:59  INFO        [VCN]  18/50  rec=0.3492  val_rec=0.3488  lr=1.00e-03 *
+2026-03-07 16:00:36  INFO        [VCN]  19/50  rec=0.3492  val_rec=0.3487  lr=1.00e-03 *
+2026-03-07 16:01:16  INFO        [VCN]  20/50  rec=0.3491  val_rec=0.3487  lr=1.00e-03 *
+2026-03-07 16:01:53  INFO        [VCN]  21/50  rec=0.3492  val_rec=0.3487  lr=1.00e-03 *
+2026-03-07 16:02:30  INFO        [VCN]  22/50  rec=0.3491  val_rec=0.3487  lr=1.00e-03
+2026-03-07 16:03:09  INFO        [VCN]  23/50  rec=0.3490  val_rec=0.3485  lr=1.00e-03 *
+2026-03-07 16:03:48  INFO        [VCN]  24/50  rec=0.3488  val_rec=0.3485  lr=1.00e-03
+2026-03-07 16:04:29  INFO        [VCN]  25/50  rec=0.3487  val_rec=0.3484  lr=1.00e-03 *
+2026-03-07 16:05:10  INFO        [VCN]  26/50  rec=0.3487  val_rec=0.3483  lr=1.00e-03 *
+2026-03-07 16:05:52  INFO        [VCN]  27/50  rec=0.3487  val_rec=0.3483  lr=1.00e-03
+2026-03-07 16:06:32  INFO        [VCN]  28/50  rec=0.3487  val_rec=0.3486  lr=1.00e-03
+2026-03-07 16:07:10  INFO        [VCN]  29/50  rec=0.3486  val_rec=0.3483  lr=1.00e-03
+2026-03-07 16:07:50  INFO        [VCN]  30/50  rec=0.3486  val_rec=0.3483  lr=1.00e-03 *
+2026-03-07 16:08:29  INFO        [VCN]  31/50  rec=0.3486  val_rec=0.3483  lr=1.00e-03
+2026-03-07 16:09:07  INFO        [VCN]  32/50  rec=0.3486  val_rec=0.3482  lr=1.00e-03 *
+2026-03-07 16:09:45  INFO        [VCN]  33/50  rec=0.3486  val_rec=0.3482  lr=1.00e-03 *
+2026-03-07 16:10:25  INFO        [VCN]  34/50  rec=0.3486  val_rec=0.3483  lr=1.00e-03
+2026-03-07 16:11:06  INFO        [VCN]  35/50  rec=0.3486  val_rec=0.3482  lr=1.00e-03 *
+2026-03-07 16:11:48  INFO        [VCN]  36/50  rec=0.3485  val_rec=0.3481  lr=1.00e-03 *
+2026-03-07 16:12:28  INFO        [VCN]  37/50  rec=0.3485  val_rec=0.3482  lr=1.00e-03
+2026-03-07 16:13:09  INFO        [VCN]  38/50  rec=0.3485  val_rec=0.3481  lr=1.00e-03 *
+2026-03-07 16:13:51  INFO        [VCN]  39/50  rec=0.3484  val_rec=0.3483  lr=1.00e-03
+2026-03-07 16:14:33  INFO        [VCN]  40/50  rec=0.3484  val_rec=0.3481  lr=1.00e-03 *
+2026-03-07 16:15:15  INFO        [VCN]  41/50  rec=0.3484  val_rec=0.3480  lr=1.00e-03 *
+2026-03-07 16:15:57  INFO        [VCN]  42/50  rec=0.3484  val_rec=0.3480  lr=1.00e-03 *
+2026-03-07 16:16:39  INFO        [VCN]  43/50  rec=0.3484  val_rec=0.3480  lr=1.00e-03 *
+2026-03-07 16:17:21  INFO        [VCN]  44/50  rec=0.3484  val_rec=0.3480  lr=1.00e-03
+2026-03-07 16:18:02  INFO        [VCN]  45/50  rec=0.3484  val_rec=0.3480  lr=1.00e-03 *
+2026-03-07 16:18:43  INFO        [VCN]  46/50  rec=0.3484  val_rec=0.3480  lr=1.00e-03
+2026-03-07 16:19:21  INFO        [VCN]  47/50  rec=0.3483  val_rec=0.3480  lr=1.00e-03 *
+2026-03-07 16:19:59  INFO        [VCN]  48/50  rec=0.3483  val_rec=0.3480  lr=1.00e-03 *
+2026-03-07 16:20:37  INFO        [VCN]  49/50  rec=0.3483  val_rec=0.3480  lr=1.00e-03
+2026-03-07 16:21:15  INFO        [VCN]  50/50  rec=0.3483  val_rec=0.3480  lr=1.00e-03
+2026-03-07 16:21:15  INFO      
+[2b] Save model
+2026-03-07 16:21:15  INFO        Model state dict saved: /home/mahmudm2/codebase/RollingWheels/Scripts/attention_simple/models/vibclustnet_20260307_154733_state_dict.pth
+2026-03-07 16:21:15  INFO        Full model saved      : /home/mahmudm2/codebase/RollingWheels/Scripts/attention_simple/models/vibclustnet_20260307_154733_full.pth
+2026-03-07 16:21:15  INFO      
+[3] Embed all windows + PCA
+2026-03-07 16:21:27  INFO        PCA: 128d → 18d (var=0.959)
+2026-03-07 16:21:27  INFO        Train PCA: (25309, 18)  All PCA: (31636, 18)
+2026-03-07 16:21:27  INFO      
+[4] Select K (silhouette sweep on train embeddings)
+2026-03-07 16:21:35  INFO          K= 3  sil=0.0603
+2026-03-07 16:21:44  INFO          K= 4  sil=0.0561
+2026-03-07 16:21:53  INFO          K= 5  sil=0.0566
+2026-03-07 16:22:02  INFO          K= 6  sil=0.0571
+2026-03-07 16:22:11  INFO          K= 7  sil=0.0582
+2026-03-07 16:22:19  INFO          K= 8  sil=0.0593
+2026-03-07 16:22:27  INFO          K= 9  sil=0.0607
+2026-03-07 16:22:35  INFO          K=10  sil=0.0612
+2026-03-07 16:22:43  INFO          K=11  sil=0.0606
+2026-03-07 16:22:51  INFO          K=12  sil=0.0611
+2026-03-07 16:22:51  INFO        Best K=10  sil=0.0612
+2026-03-07 16:22:51  INFO        Saved figures/26_k_selection_20260307_154733.png
+2026-03-07 16:22:51  INFO      
+[5] Clustering  K=10
+2026-03-07 16:23:43  INFO          SBScan auto-eps=0.3363  (knee idx=1338/25309)
+2026-03-07 16:23:43  INFO          SBScan: 50 clusters, 2687 non-noise / 25309 total
+2026-03-07 16:24:02  INFO      
+[6] Unsupervised metrics (all data)
+2026-03-07 16:25:05  INFO      
+── ALL DATA — Unsupervised metrics (ARI/NMI vs KMeans pseudo-GT) ──
+2026-03-07 16:25:05  INFO      
+        Silhouette      DB        CH   Dunn  ARI_vs_KM  NMI_vs_KM
+KMeans      0.0611  2.4314 1269.5162 0.3746     1.0000     1.0000
+Agg         0.0150  3.1435  388.5119 0.2782     0.0154     0.0947
+GMM        -0.0943 15.6222  155.5376 0.0365     0.0417     0.1160
+SBScan     -0.1959  2.2319   58.7189 0.1991     0.0061     0.1324
+PSO         0.0134  2.7492  776.9297 0.2867     0.1293     0.2297
+GSA         0.0227  3.1935  751.8569 0.2829     0.0786     0.1995
+2026-03-07 16:25:05  INFO      
+[7] Save predictions
+2026-03-07 16:25:05  INFO        Predictions saved: /home/mahmudm2/codebase/RollingWheels/Scripts/attention_simple/26_unsupervised_predictions.csv  (31636 windows)
+2026-03-07 16:25:05  INFO      
+[8] Visualise (t-SNE on all data)
+2026-03-07 16:25:05  INFO        Sub-sampled 5000/31636 windows for t-SNE
+2026-03-07 16:25:05  INFO        t-SNE [All]...

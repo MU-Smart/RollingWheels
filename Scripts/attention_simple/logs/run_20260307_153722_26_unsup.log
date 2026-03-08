@@ -1,0 +1,27 @@
+2026-03-07 15:37:22  INFO      Log file: /home/mahmudm2/codebase/RollingWheels/Scripts/attention_simple/logs/run_20260307_153722_26_unsup.log
+2026-03-07 15:37:22  INFO      Device: cuda
+2026-03-07 15:37:22  INFO      Run timestamp: 20260307_153722
+2026-03-07 15:37:22  INFO      
+[1] Load all windowed data (no labels)
+2026-03-07 15:37:22  INFO        Loading: ../../Datasets/ExtractedFeatures/labeled_accelerometer_raw_windows.csv
+2026-03-07 15:37:27  INFO        Rows: 8153088  Windows: 7962
+2026-03-07 15:37:30  INFO        Loading: ../../Datasets/ExtractedFeatures/unlabeled_accelerometer_raw_windows.csv
+2026-03-07 15:37:39  INFO        Rows: 24242176  Windows: 23674
+2026-03-07 15:37:47  INFO        Total windows: 31636
+2026-03-07 15:37:47  INFO        Train: 25309  Test: 6327
+2026-03-07 15:37:47  INFO        Window length T=1024
+2026-03-07 15:37:47  INFO      
+[2] Train VibClustNet autoencoder (reconstruction only)
+2026-03-07 15:37:48  INFO        Parameters: 504,244
+2026-03-07 15:38:28  INFO        [VCN]   1/150  rec=0.0039  val_rec=0.0003  lr=1.00e-03 *
+2026-03-07 15:39:07  INFO        [VCN]   2/150  rec=0.0003  val_rec=0.0004  lr=1.00e-03
+2026-03-07 15:39:46  INFO        [VCN]   3/150  rec=0.0002  val_rec=0.0007  lr=1.00e-03
+2026-03-07 15:40:23  INFO        [VCN]   4/150  rec=0.0002  val_rec=0.0003  lr=1.00e-03 *
+2026-03-07 15:41:00  INFO        [VCN]   5/150  rec=0.0002  val_rec=0.0003  lr=1.00e-03
+2026-03-07 15:41:38  INFO        [VCN]   6/150  rec=0.0001  val_rec=0.0001  lr=1.00e-03 *
+2026-03-07 15:42:15  INFO        [VCN]   7/150  rec=0.0001  val_rec=0.0001  lr=1.00e-03 *
+2026-03-07 15:42:52  INFO        [VCN]   8/150  rec=0.0001  val_rec=0.0002  lr=1.00e-03
+2026-03-07 15:43:30  INFO        [VCN]   9/150  rec=0.0001  val_rec=0.0001  lr=1.00e-03
+2026-03-07 15:44:08  INFO        [VCN]  10/150  rec=0.0001  val_rec=0.0001  lr=1.00e-03
+2026-03-07 15:44:46  INFO        [VCN]  11/150  rec=0.0001  val_rec=0.0000  lr=1.00e-03 *
+2026-03-07 15:45:26  INFO        [VCN]  12/150  rec=0.0001  val_rec=0.0002  lr=1.00e-03
