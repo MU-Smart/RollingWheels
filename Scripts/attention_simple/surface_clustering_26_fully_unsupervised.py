@@ -7,7 +7,7 @@ at any stage of training, clustering, or evaluation.
 
 Steps
 -----
-1. Load all windowed data (both CSVs)  →  Z-normalise  →  random 80/20 split
+1. Load all windowed data (both CSVs)  →  Z-normalise (per-window)  →  random 80/20 split
 2. Train VibClustNet autoencoder (reconstruction loss only, no clf head)
 3. Extract embeddings for ALL windows  →  PCA
 4. Cluster (KMeans / Agglomerative / GMM / SBScan / PSO / GSA) on PCA embeddings
@@ -79,10 +79,10 @@ CONFIG = {
     "pca_variance"           : 0.95,
 
     # VibClustNet hyper-parameters
-    "vcn_epochs"             : 50,
-    "vcn_batch_size"         : 32,
+    "vcn_epochs"             : 150,
+    "vcn_batch_size"         : 64,
     "vcn_lr"                 : 1e-3,
-    "vcn_patience"           : 50,
+    "vcn_patience"           : 20,
     "vcn_embedding_dim"      : 128,
     "vcn_checkpoint"         : Path("vibclustnet_best_26.pth"),
 
@@ -269,9 +269,9 @@ def _load_windows(csv_path: Path) -> np.ndarray:
     for _, group in raw.groupby("window_id", sort=True):
         xyz = group[["valueX", "valueY", "valueZ"]].to_numpy(dtype=np.float32).T  # (3, T)
         windows.append(xyz)
-    arr = np.stack(windows).astype(np.float32)   # (N, 3, T)
-    mu  = arr.mean(axis=-1, keepdims=True)
-    std = arr.std(axis=-1,  keepdims=True).clip(1e-8)
+    arr = np.stack(windows).astype(np.float32)        # (N, 3, T)
+    mu  = arr.mean(axis=(-2, -1), keepdims=True)      # (N, 1, 1) — per window
+    std = arr.std(axis=(-2, -1),  keepdims=True).clip(1e-8)
     return (arr - mu) / std
 
 

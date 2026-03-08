@@ -2,7 +2,7 @@
 Accelerometer Features: KMeans Clustering + t-SNE & UMAP Visualization
 -----------------------------------------------------------------------
 Usage:
-    python raw_feature_clustering.py --data ../Datasets/ExtractedFeatures/accelerometer_features.csv
+    python raw_feature_clustering.py --data ../Datasets/ExtractedFeatures/unlabeled_accelerometer_raw_windows.csv
     python raw_feature_clustering.py --data ... --labels ../Datasets/labels.csv   # enables ARI / MI
 """
 
@@ -214,7 +214,7 @@ def scatter_grid(embeddings_dict, labels_dict, metrics_df, title_prefix, filenam
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data",   default="../Datasets/ExtractedFeatures/accelerometer_features.csv")
+    parser.add_argument("--data",   default="../Datasets/ExtractedFeatures/unlabeled_accelerometer_features.csv")
     parser.add_argument("--labels", default=None,
                         help="Optional CSV with ground-truth labels (enables ARI / NMI)")
     args = parser.parse_args()
