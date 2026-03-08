@@ -7,13 +7,21 @@ at any stage of training, clustering, or evaluation.
 
 Steps
 -----
-1. Load all windowed data (both CSVs)  →  Z-normalise (per-window)  →  random 80/20 split
-2. Train VibClustNet autoencoder (reconstruction loss only, no clf head)
+1. Load all windowed data (both CSVs)  →  GLOBAL Z-normalise (whole dataset)  →  random 80/20 split
+2. Train VibClustNet autoencoder with combined loss:
+      • Log-cosh time-domain reconstruction
+      • Spectral (FFT magnitude) reconstruction  ← vibration frequency patterns
+      • VICReg variance + covariance regularisation ← prevents embedding collapse
 3. Extract embeddings for ALL windows  →  PCA
 4. Cluster (KMeans / Agglomerative / GMM / SBScan / PSO / GSA) on PCA embeddings
 5. Evaluate with unsupervised metrics only (Silhouette, DB, CH, Dunn)
 6. Visualise: t-SNE  coloured by cluster assignment
-7. VibClustNet diagnostic plots (attention, CAIM, reconstruction)
+7. Fixed-K experiments for K=3, 5, 7 (main targets)
+8. VibClustNet diagnostic plots (attention, CAIM, reconstruction)
+
+Multi-sensor support: sensor_cols in CONFIG controls which value columns are
+loaded.  Set to e.g. ["valueX","valueY","valueZ","gyroX","gyroY","gyroZ"]
+for a 6-channel setup.  The model adjusts its input channels automatically.
 """
 
 import logging
@@ -71,6 +79,11 @@ CONFIG = {
     "windowed_csv_1"         : Path("../../Datasets/ExtractedFeatures/labeled_accelerometer_raw_windows.csv"),
     "windowed_csv_2"         : Path("../../Datasets/ExtractedFeatures/unlabeled_accelerometer_raw_windows.csv"),
 
+    # Multi-sensor: list every value column to use.
+    # Add gyro / extra sensor columns here if available.
+    # None → auto-detect all columns starting with "value"
+    "sensor_cols"            : None,
+
     # split
     "test_size"              : 0.2,
     "seed"                   : 42,
@@ -83,8 +96,13 @@ CONFIG = {
     "vcn_batch_size"         : 64,
     "vcn_lr"                 : 1e-3,
     "vcn_patience"           : 20,
-    "vcn_embedding_dim"      : 128,
+    "vcn_embedding_dim"      : 64,       # 64 is tighter; easier for clustering
     "vcn_checkpoint"         : Path("vibclustnet_best_26.pth"),
+
+    # Loss weights
+    "loss_spectral_w"        : 0.5,      # FFT magnitude reconstruction weight
+    "loss_vicreg_var_w"      : 25.0,     # VICReg variance term
+    "loss_vicreg_cov_w"      : 1.0,      # VICReg covariance term
 
     # Output directories
     "figures_dir"            : Path("figures"),
@@ -151,56 +169,71 @@ class FAAG(nn.Module):
 
 
 class CAIM(nn.Module):
-    """Multi-head self-attention over 3 pooled axis feature vectors."""
-    def __init__(self, in_ch: int, num_heads: int = 4):
+    """Multi-head self-attention over N_ch pooled axis feature vectors."""
+    def __init__(self, in_ch: int, n_axes: int, num_heads: int = 4):
         super().__init__()
         nh = num_heads if in_ch % num_heads == 0 else 1
-        self.attn = nn.MultiheadAttention(in_ch, nh, batch_first=True)
-        self.norm = nn.LayerNorm(in_ch)
+        self.n_axes = n_axes
+        self.attn   = nn.MultiheadAttention(in_ch, nh, batch_first=True)
+        self.norm   = nn.LayerNorm(in_ch)
 
     def forward(self, axis_feats):
-        pooled   = torch.stack([f.mean(dim=-1) for f in axis_feats], dim=1)
+        pooled   = torch.stack([f.mean(dim=-1) for f in axis_feats], dim=1)   # (B, n_axes, CH)
         attn_out, weights = self.attn(pooled, pooled, pooled)
         attn_out = self.norm(attn_out + pooled)
-        attended = [axis_feats[i] * attn_out[:, i, :].unsqueeze(-1) for i in range(3)]
+        attended = [axis_feats[i] * attn_out[:, i, :].unsqueeze(-1)
+                    for i in range(self.n_axes)]
         return attended, weights
 
 
 class VibClustNet(nn.Module):
     """
-    Autoencoder for 3-axis vibration windows (channels-first).
-    Input / output: (batch, 3, T)
-    Pure reconstruction objective — no classification head.
+    Autoencoder for multi-channel vibration windows (channels-first).
+    Input / output: (batch, n_channels, T)
+
+    Loss used during training: time-domain reconstruction + spectral reconstruction
+    + VICReg variance/covariance regularisation — see vibration_loss().
     """
-    def __init__(self, T: int, emb_dim: int = 256):
+    def __init__(self, T: int, n_channels: int = 3, emb_dim: int = 64):
         super().__init__()
-        self.T = T
+        self.T          = T
+        self.n_channels = n_channels
         CH = 96
-        self.mstcb1   = MSTCB(1,      CH)
-        self.mstcb2   = MSTCB(CH,     CH)
-        self.caim     = CAIM(CH, num_heads=4)
-        self.faag     = FAAG(3 * CH, T)
-        self.mstcb3   = MSTCB(3 * CH, CH)
+        # Per-channel encoder (shared weights)
+        self.mstcb1   = MSTCB(1,           CH)
+        self.mstcb2   = MSTCB(CH,          CH)
+        self.caim     = CAIM(CH, n_axes=n_channels, num_heads=4)
+        self.faag     = FAAG(n_channels * CH, T)
+        self.mstcb3   = MSTCB(n_channels * CH, CH)
         self.enc_head = nn.Linear(CH, emb_dim)
-        # Decoder: projects embedding back to CH channels, then reconstructs
-        # through time via conv.  Forces ALL information through the bottleneck.
-        self.dec_proj = nn.Linear(emb_dim, CH)
+
+        # Decoder: upsample via learned linear + temporal conv stack.
+        # Using a strided deconv sequence avoids the "broadcast one vector"
+        # shortcut and forces the network to learn temporal structure.
+        self.dec_proj = nn.Linear(emb_dim, CH * 4)
+        # We'll reshape dec_proj output to (batch, CH, 4) then upsample to T
         self.rec_head = nn.Sequential(
+            nn.Upsample(size=T, mode="linear", align_corners=False),
             nn.Conv1d(CH, CH, 7, padding="same"), nn.ReLU(),
-            nn.Conv1d(CH, CH, 3, padding="same"), nn.ReLU(),
+            nn.Conv1d(CH, CH, 5, padding="same"), nn.ReLU(),
             nn.Conv1d(CH, CH // 2, 3, padding="same"), nn.ReLU(),
-            nn.Conv1d(CH // 2, 3, 1),
+            nn.Conv1d(CH // 2, n_channels, 1),
         )
 
+    def _ensure_channels_first(self, x):
+        if x.shape[1] != self.n_channels:
+            x = x.permute(0, 2, 1)
+        return x
+
     def _encode(self, x):
-        axes = [x[:, i:i+1, :] for i in range(3)]
+        axes = [x[:, i:i+1, :] for i in range(self.n_channels)]
         axes = [self.mstcb2(self.mstcb1(a)) for a in axes]
         attended, caim_w = self.caim(axes)
-        cat              = torch.cat(attended, dim=1)
+        cat              = torch.cat(attended, dim=1)         # (B, n_ch*CH, T)
         fout, t_attn, f_attn = self.faag(cat)
-        after3           = self.mstcb3(fout)
-        pooled = after3.mean(dim=-1)
-        emb    = self.enc_head(pooled)
+        after3           = self.mstcb3(fout)                  # (B, CH, T)
+        pooled = after3.mean(dim=-1)                          # (B, CH)
+        emb    = self.enc_head(pooled)                        # (B, emb_dim)
         enc_inter = {
             "after_mstcb12"  : torch.stack([a.mean(-1) for a in axes], dim=1),
             "after_mstcb3"   : pooled,
@@ -212,9 +245,10 @@ class VibClustNet(nn.Module):
         return emb, enc_inter
 
     def _decode(self, emb, T):
-        h = self.dec_proj(emb)                  # (batch, CH)
-        h = h.unsqueeze(-1).expand(-1, -1, T)   # (batch, CH, T)
-        recon = self.rec_head(h)                 # (batch, 3, T)
+        CH = 96
+        h = self.dec_proj(emb)                    # (B, CH*4)
+        h = h.view(h.shape[0], CH, 4)             # (B, CH, 4) — seed temporal structure
+        recon = self.rec_head(h)                   # (B, n_channels, T) via Upsample→conv
         dec_inter = {
             "d_after_upsample": h.mean(dim=-1),
             "d_after_conv1"   : h.mean(dim=-1),
@@ -222,27 +256,72 @@ class VibClustNet(nn.Module):
         return recon, dec_inter
 
     def forward(self, x):
-        if x.shape[1] != 3:
-            x = x.permute(0, 2, 1)
+        x = self._ensure_channels_first(x)
         T = x.shape[-1]
         emb, enc_inter = self._encode(x)
         recon, dec_inter = self._decode(emb, T)
         return recon, emb, enc_inter, dec_inter
 
     def embed(self, x):
-        if x.shape[1] != 3:
-            x = x.permute(0, 2, 1)
+        x = self._ensure_channels_first(x)
         emb, _ = self._encode(x)
         return F.normalize(emb, dim=-1)
 
 
-# ── Log-cosh reconstruction loss ──────────────────────────────────────────────
-def multi_rec_loss(x_orig, recon):
-    if x_orig.shape[1] != 3:
-        x_orig = x_orig.permute(0, 2, 1)
-    d   = recon - x_orig
+# ── Vibration-aware combined loss ─────────────────────────────────────────────
+def _log_cosh(d: torch.Tensor) -> torch.Tensor:
+    """Numerically stable log-cosh."""
     ln2 = torch.tensor(2.0, device=d.device).log()
     return (torch.logaddexp(d, -d) - ln2).sum() / d.numel()
+
+
+def vibration_loss(x_orig: torch.Tensor, recon: torch.Tensor,
+                   emb: torch.Tensor, cfg: dict) -> tuple[torch.Tensor, dict]:
+    """
+    Combined loss that forces the model to learn vibration-specific patterns:
+
+    1. Time-domain log-cosh  — smooth reconstruction
+    2. Spectral (FFT magnitude) reconstruction  — vibration frequency content
+       Different road surfaces produce distinct frequency spectra; this loss
+       explicitly rewards getting those spectra right.
+    3. VICReg variance term  — prevents all embeddings from collapsing to the
+       same point (std < 1 penalised per dimension).
+    4. VICReg covariance term — decorrelates embedding dimensions so each
+       captures independent structure, making PCA / clustering more effective.
+
+    Returns total loss and a dict of component values for logging.
+    """
+    # 1. Time-domain
+    d = recon - x_orig
+    t_loss = _log_cosh(d)
+
+    # 2. Spectral — compare FFT magnitude on the time axis
+    fft_orig = torch.fft.rfft(x_orig, dim=-1).abs()
+    fft_rec  = torch.fft.rfft(recon,  dim=-1).abs()
+    s_loss   = F.mse_loss(fft_rec, fft_orig)
+
+    # 3–4. VICReg on embeddings
+    N, D = emb.shape
+    std_emb  = emb.std(dim=0)                                   # (D,)
+    var_loss = F.relu(1.0 - std_emb).mean()                     # push std ≥ 1
+
+    emb_c  = emb - emb.mean(dim=0, keepdim=True)
+    cov    = (emb_c.T @ emb_c) / max(N - 1, 1)                  # (D, D)
+    I      = torch.eye(D, device=cov.device)
+    cov_loss = (cov * (1 - I)).pow(2).sum() / D                  # off-diagonal only
+
+    total = (t_loss
+             + cfg["loss_spectral_w"] * s_loss
+             + cfg["loss_vicreg_var_w"] * var_loss
+             + cfg["loss_vicreg_cov_w"] * cov_loss)
+
+    components = {
+        "t_loss": t_loss.item(),
+        "s_loss": s_loss.item(),
+        "var_loss": var_loss.item(),
+        "cov_loss": cov_loss.item(),
+    }
+    return total, components
 
 
 # ── Windowed dataset ───────────────────────────────────────────────────────────
@@ -259,43 +338,68 @@ class WindowedDataset(torch.utils.data.Dataset):
 
 
 # ── Load windowed csv ──────────────────────────────────────────────────────────
-def _load_windows(csv_path: Path) -> np.ndarray:
-    """Load a windowed CSV and return (N, 3, T) Z-normalised array.
-    Only uses window_id + valueX/Y/Z columns; all other columns ignored."""
+def _detect_sensor_cols(df: pd.DataFrame, sensor_cols) -> list:
+    """Return sensor columns: explicit list, or auto-detect 'value*' columns."""
+    if sensor_cols is not None:
+        missing = [c for c in sensor_cols if c not in df.columns]
+        if missing:
+            raise ValueError(f"Sensor columns not found in CSV: {missing}")
+        return list(sensor_cols)
+    detected = sorted(c for c in df.columns if c.lower().startswith("value"))
+    if not detected:
+        raise ValueError("No 'value*' columns found. Set sensor_cols in CONFIG.")
+    logger.info(f"  Auto-detected sensor columns: {detected}")
+    return detected
+
+
+def _load_windows_raw(csv_path: Path, sensor_cols) -> tuple[np.ndarray, list]:
+    """Load windowed CSV and return raw (N, C, T) array WITHOUT normalisation.
+    Preserves amplitude/energy differences between surfaces — global norm applied later."""
     logger.info(f"  Loading: {csv_path}")
     raw = pd.read_csv(csv_path)
     logger.info(f"  Rows: {len(raw)}  Windows: {raw['window_id'].nunique()}")
+    cols = _detect_sensor_cols(raw, sensor_cols)
     windows = []
     for _, group in raw.groupby("window_id", sort=True):
-        xyz = group[["valueX", "valueY", "valueZ"]].to_numpy(dtype=np.float32).T  # (3, T)
-        windows.append(xyz)
-    arr = np.stack(windows).astype(np.float32)        # (N, 3, T)
-    mu  = arr.mean(axis=(-2, -1), keepdims=True)      # (N, 1, 1) — per window
-    std = arr.std(axis=(-2, -1),  keepdims=True).clip(1e-8)
-    return (arr - mu) / std
+        win = group[cols].to_numpy(dtype=np.float32).T   # (C, T)
+        windows.append(win)
+    arr = np.stack(windows).astype(np.float32)            # (N, C, T)
+    return arr, cols
 
 
 def load_all_data(cfg):
     """
-    Load both CSVs, pool all windows, random 80/20 split.
-    No labels are read or used.
+    Load both CSVs, pool all windows, apply GLOBAL Z-normalisation,
+    then random 80/20 split.  No labels are read or used.
+
+    Global normalisation (single mean/std across all samples, channels, time)
+    preserves inter-surface amplitude differences that per-window normalisation
+    would destroy.
 
     Returns:
-        tr_X  (N_tr, 3, T)
-        te_X  (N_te, 3, T)
-        all_X (N,    3, T)  — full pool in original order
+        tr_X   (N_tr, C, T)
+        te_X   (N_te, C, T)
+        all_X  (N,    C, T)  — full pool in original order
+        n_channels  int
     """
-    arr1 = _load_windows(cfg["windowed_csv_1"])
-    arr2 = _load_windows(cfg["windowed_csv_2"])
-    all_X = np.concatenate([arr1, arr2], axis=0)
-    logger.info(f"  Total windows: {len(all_X)}")
+    arr1, cols = _load_windows_raw(cfg["windowed_csv_1"], cfg["sensor_cols"])
+    arr2, _    = _load_windows_raw(cfg["windowed_csv_2"], cfg["sensor_cols"])
+    all_X = np.concatenate([arr1, arr2], axis=0)           # (N, C, T)
+    logger.info(f"  Total windows: {len(all_X)}  Channels: {all_X.shape[1]}  "
+                f"T: {all_X.shape[2]}  Cols: {cols}")
+
+    # ── Global Z-normalisation (one scalar mean/std for the whole dataset) ──
+    g_mean = float(all_X.mean())
+    g_std  = float(all_X.std().clip(1e-8))
+    all_X  = (all_X - g_mean) / g_std
+    logger.info(f"  Global norm  mean={g_mean:.4f}  std={g_std:.4f}")
 
     rng   = np.random.default_rng(cfg["seed"])
     idx   = rng.permutation(len(all_X))
     n_te  = max(1, int(len(all_X) * cfg["test_size"]))
     te_idx, tr_idx = idx[:n_te], idx[n_te:]
     logger.info(f"  Train: {len(tr_idx)}  Test: {len(te_idx)}")
-    return all_X[tr_idx], all_X[te_idx], all_X
+    return all_X[tr_idx], all_X[te_idx], all_X, all_X.shape[1]
 
 
 # ── VibClustNet training ───────────────────────────────────────────────────────
@@ -315,36 +419,43 @@ def train_vibclustnet(model, train_loader, val_loader, cfg, device):
 
     for ep in range(cfg["vcn_epochs"]):
         model.train()
-        tr_rec = 0.0
+        tr_total = tr_t = tr_s = tr_var = tr_cov = 0.0
         for xb in train_loader:
             xb = xb.to(device)
             opt.zero_grad()
-            recon, _, _, _ = model(xb)
-            loss = multi_rec_loss(xb, recon)
+            recon, emb, _, _ = model(xb)
+            loss, comp = vibration_loss(xb, recon, emb, cfg)
             loss.backward()
             nn.utils.clip_grad_norm_(model.parameters(), 5.0)
             opt.step()
-            tr_rec += loss.item()
-        tr_rec /= len(train_loader)
+            tr_total += loss.item()
+            tr_t     += comp["t_loss"]
+            tr_s     += comp["s_loss"]
+            tr_var   += comp["var_loss"]
+            tr_cov   += comp["cov_loss"]
+        n = len(train_loader)
+        tr_total /= n; tr_t /= n; tr_s /= n; tr_var /= n; tr_cov /= n
 
         model.eval()
-        va_rec = 0.0
+        va_total = 0.0
         with torch.no_grad():
             for xb in val_loader:
                 xb = xb.to(device)
-                recon, _, _, _ = model(xb)
-                va_rec += multi_rec_loss(xb, recon).item()
-        va_rec /= len(val_loader)
+                recon, emb, _, _ = model(xb)
+                va_total += vibration_loss(xb, recon, emb, cfg)[0].item()
+        va_total /= len(val_loader)
 
-        sched.step(va_rec)
-        imp  = va_rec < best - 1e-6
-        best, pat = (va_rec, 0) if imp else (best, pat + 1)
+        sched.step(va_total)
+        imp  = va_total < best - 1e-6
+        best, pat = (va_total, 0) if imp else (best, pat + 1)
         if imp:
             torch.save(model.state_dict(), ckpt)
         lr_now = opt.param_groups[0]["lr"]
-        logger.info(f"  [VCN] {ep+1:3d}/{cfg['vcn_epochs']}  "
-                    f"rec={tr_rec:.4f}  val_rec={va_rec:.4f}  "
-                    f"lr={lr_now:.2e}" + (" *" if imp else ""))
+        logger.info(
+            f"  [VCN] {ep+1:3d}/{cfg['vcn_epochs']}  "
+            f"loss={tr_total:.4f}  val={va_total:.4f}  "
+            f"(t={tr_t:.3f} s={tr_s:.3f} var={tr_var:.3f} cov={tr_cov:.3f})  "
+            f"lr={lr_now:.2e}" + (" *" if imp else ""))
 
         if pat >= cfg["vcn_patience"]:
             logger.info(f"  Early stop at epoch {ep+1}")
@@ -681,12 +792,12 @@ def plot_vibclustnet_diagnostics(model, sample_X, pred_kmeans, device, figures_d
     """
     model.eval()
     all_t_attn, all_caim_w = [], []
+    n_ch = model.n_channels
     bs = 64
     with torch.no_grad():
         for i in range(0, len(sample_X), bs):
             xb = torch.tensor(sample_X[i:i+bs]).to(device)
-            if xb.shape[1] != 3:
-                xb = xb.permute(0, 2, 1)
+            xb = model._ensure_channels_first(xb)
             _, enc_inter = model._encode(xb)
             all_t_attn.append(enc_inter["t_attn"].cpu().numpy())
             all_caim_w.append(enc_inter["caim_weights"].cpu().numpy())
@@ -712,16 +823,20 @@ def plot_vibclustnet_diagnostics(model, sample_X, pred_kmeans, device, figures_d
     plt.close()
     logger.info(f"  Saved {fname}")
 
-    # 2. CAIM cross-axis heatmap per cluster
-    axis_labels = ["X", "Y", "Z"]
+    # 2. CAIM cross-sensor attention heatmap per cluster
+    caim_labels = ([f"Ch{i}" for i in range(n_ch)]
+                   if n_ch not in (3, 6)
+                   else (["X", "Y", "Z"] if n_ch == 3
+                         else ["AX", "AY", "AZ", "GX", "GY", "GZ"]))
     fig, axes = plt.subplots(1, n_cls, figsize=(3.5 * n_cls, 3.5), squeeze=False)
-    fig.suptitle("VibClustNet — CAIM Cross-Axis Attention per Cluster", fontweight="bold")
+    fig.suptitle("VibClustNet — CAIM Cross-Sensor Attention per Cluster", fontweight="bold")
+    tick_pos = list(range(n_ch))
     for ax, cid in zip(axes[0], clusters):
         mask  = pred_kmeans == cid
-        avg_w = all_caim_w[mask].mean(axis=0)
+        avg_w = all_caim_w[mask].mean(axis=0)      # (n_ch, n_ch)
         im    = ax.imshow(avg_w, vmin=0, vmax=1, cmap="YlOrRd", aspect="auto")
-        ax.set_xticks([0, 1, 2]); ax.set_xticklabels(axis_labels)
-        ax.set_yticks([0, 1, 2]); ax.set_yticklabels(axis_labels)
+        ax.set_xticks(tick_pos); ax.set_xticklabels(caim_labels, fontsize=7)
+        ax.set_yticks(tick_pos); ax.set_yticklabels(caim_labels, fontsize=7)
         ax.set_title(f"Cluster {cid}", fontsize=9)
         plt.colorbar(im, ax=ax, shrink=0.8)
     plt.tight_layout()
@@ -731,24 +846,26 @@ def plot_vibclustnet_diagnostics(model, sample_X, pred_kmeans, device, figures_d
     logger.info(f"  Saved {fname}")
 
     # 3. Reconstruction for 3 random samples
+    n_ch = model.n_channels
+    ch_names = [f"Ch{i}" for i in range(n_ch)]
+    if n_ch == 3: ch_names = ["X", "Y", "Z"]
+    if n_ch == 6: ch_names = ["AccX","AccY","AccZ","GyrX","GyrY","GyrZ"]
     rng  = np.random.default_rng(42)
     idxs = rng.choice(len(sample_X), size=min(3, len(sample_X)), replace=False)
-    fig, axes = plt.subplots(len(idxs), 3, figsize=(15, 4 * len(idxs)), squeeze=False)
+    fig, axes = plt.subplots(len(idxs), n_ch, figsize=(5 * n_ch, 4 * len(idxs)), squeeze=False)
     fig.suptitle("VibClustNet — Reconstruction", fontweight="bold")
-    axis_names = ["X", "Y", "Z"]
     with torch.no_grad():
         for row, idx in enumerate(idxs):
             xb = torch.tensor(sample_X[idx:idx+1]).to(device)
-            if xb.shape[1] != 3:
-                xb = xb.permute(0, 2, 1)
+            xb = model._ensure_channels_first(xb)
             recon, _, _, _ = model(xb)
             orig = xb[0].cpu().numpy()
             rec  = recon[0].cpu().numpy()
-            for col in range(3):
+            for col in range(n_ch):
                 ax = axes[row, col]
                 ax.plot(orig[col], label="Original",      alpha=0.85, linewidth=0.8)
                 ax.plot(rec[col],  label="Reconstructed", alpha=0.85, linewidth=0.8, ls="--")
-                ax.set_title(f"Sample {idx} — Axis {axis_names[col]}", fontsize=9)
+                ax.set_title(f"Sample {idx} — {ch_names[col]}", fontsize=9)
                 ax.set_xlabel("Time"); ax.legend(fontsize=7); ax.grid(alpha=0.3)
     plt.tight_layout()
     fname = figures_dir / f"vcn_reconstruction_{RUN_TS}.png"
@@ -859,20 +976,21 @@ def main():
     logger.info(f"Run timestamp: {RUN_TS}")
 
     # ── [1] Load all data ────────────────────────────────────────────────────
-    logger.info("\n[1] Load all windowed data (no labels)")
-    tr_X, te_X, all_X = load_all_data(CONFIG)
+    logger.info("\n[1] Load all windowed data (no labels) — global normalisation")
+    tr_X, te_X, all_X, n_channels = load_all_data(CONFIG)
     T = all_X.shape[2]
-    logger.info(f"  Window length T={T}")
+    logger.info(f"  Window length T={T}  Channels={n_channels}")
 
-    # ── [2] Train VibClustNet (reconstruction only) ──────────────────────────
-    logger.info("\n[2] Train VibClustNet autoencoder (reconstruction only)")
+    # ── [2] Train VibClustNet (vib-aware loss) ───────────────────────────────
+    logger.info("\n[2] Train VibClustNet (time + spectral + VICReg loss)")
     tr_ds = WindowedDataset(tr_X)
     va_ds = WindowedDataset(te_X)
     tr_loader = DataLoader(tr_ds, batch_size=CONFIG["vcn_batch_size"],
                            shuffle=True,  drop_last=True,  num_workers=0)
     va_loader = DataLoader(va_ds, batch_size=CONFIG["vcn_batch_size"],
                            shuffle=False, num_workers=0)
-    model = VibClustNet(T=T, emb_dim=CONFIG["vcn_embedding_dim"]).to(device)
+    model = VibClustNet(T=T, n_channels=n_channels,
+                        emb_dim=CONFIG["vcn_embedding_dim"]).to(device)
     logger.info(f"  Parameters: {sum(p.numel() for p in model.parameters()):,}")
     model = train_vibclustnet(model, tr_loader, va_loader, CONFIG, device)
 
@@ -907,6 +1025,7 @@ def main():
     logger.info("\n[8] Visualise (t-SNE on all data)")
     # Sub-sample if large to keep t-SNE tractable
     max_tsne = 5000
+    sidx = None
     if len(all_pca) > max_tsne:
         rng  = np.random.default_rng(CONFIG["seed"])
         sidx = rng.choice(len(all_pca), size=max_tsne, replace=False)
@@ -919,12 +1038,12 @@ def main():
     ts = project_tsne(ts_pca, "All")
     plot_all_methods_grid(ts, ts_pred, figures_dir)
     plot_individual_tsne(ts, ts_pred, figures_dir)
-    plot_fixed_k_grid(ts_pca, ts, figures_dir, ks=(3, 5, 7, 11))
+    # Fixed-K at the three primary targets (3, 5, 7) + one extra
+    plot_fixed_k_grid(ts_pca, ts, figures_dir, ks=(3, 5, 7, 9))
 
     # ── [9] Diagnostic plots ─────────────────────────────────────────────────
     logger.info("\n[9] VibClustNet diagnostic plots")
-    # Use sub-sampled set so attention arrays fit in memory
-    diag_X = all_X[sidx] if len(all_X) > max_tsne else all_X
+    diag_X = all_X[sidx] if sidx is not None else all_X
     plot_vibclustnet_diagnostics(
         model, diag_X, ts_pred["kmeans"], device, figures_dir)
 
