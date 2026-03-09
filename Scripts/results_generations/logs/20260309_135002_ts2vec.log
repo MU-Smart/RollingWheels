@@ -1,0 +1,56 @@
+2026-03-09 13:50:02  INFO  Log file: /Users/nadim/MyFiles/vscode/RollingWheels/Scripts/results_generations/logs/20260309_135002_ts2vec.log
+2026-03-09 13:50:02  INFO  Device: mps
+2026-03-09 13:50:02  INFO  Run timestamp: 20260309_135002
+2026-03-09 13:50:02  INFO  
+[0] Surface names
+2026-03-09 13:50:02  INFO      1 -> Paving Blocks (Smooth) (Red)
+2026-03-09 13:50:02  INFO      2 -> Concrete Sidewalk
+2026-03-09 13:50:02  INFO      3 -> Smooth Brick (High Street)
+2026-03-09 13:50:02  INFO      4 -> Rough brick (High Street)
+2026-03-09 13:50:02  INFO      5 -> Asphalt / Tar surface
+2026-03-09 13:50:02  INFO      6 -> Indoor Carpet (low-pile)
+2026-03-09 13:50:02  INFO      7 -> Indoor Linoleum
+2026-03-09 13:50:02  INFO      8 -> Indoor Tile
+2026-03-09 13:50:02  INFO      9 -> Curb Up
+2026-03-09 13:50:02  INFO     10 -> Curb Down
+2026-03-09 13:50:02  INFO     11 -> Rectangular Paving Tiles
+2026-03-09 13:50:02  INFO     12 -> Paving Blocks (Rough)
+2026-03-09 13:50:02  INFO  
+[1] Load windowed data (labeled + unlabeled)
+2026-03-09 13:50:02  INFO    Loading: ../../Datasets/ExtractedFeatures/labeled_accelerometer_raw_windows.csv
+2026-03-09 13:50:04  INFO    Rows: 8153088  Windows: 7962
+2026-03-09 13:50:05  INFO    Labeled windows: 7962  Classes: [np.int64(0), np.int64(1), np.int64(2), np.int64(3), np.int64(4), np.int64(5), np.int64(6), np.int64(7), np.int64(8), np.int64(9), np.int64(10), np.int64(11)]
+2026-03-09 13:50:05  INFO    Loading: ../../Datasets/ExtractedFeatures/unlabeled_accelerometer_raw_windows.csv
+2026-03-09 13:50:11  INFO    Rows: 24242176  Windows: 23674
+2026-03-09 13:50:14  INFO    Unlabeled windows: 23674
+2026-03-09 13:50:14  INFO    Stratified split (labeled only):
+2026-03-09 13:50:14  INFO      Surface 0                       :   122 train    30 test
+2026-03-09 13:50:14  INFO      Paving Blocks (Smooth) (Red)    :   671 train   167 test
+2026-03-09 13:50:14  INFO      Concrete Sidewalk               :   511 train   127 test
+2026-03-09 13:50:14  INFO      Smooth Brick (High Street)      :   395 train    98 test
+2026-03-09 13:50:14  INFO      Rough brick (High Street)       :   781 train   195 test
+2026-03-09 13:50:14  INFO      Asphalt / Tar surface           :   938 train   234 test
+2026-03-09 13:50:14  INFO      Indoor Carpet (low-pile)        :   958 train   239 test
+2026-03-09 13:50:14  INFO      Indoor Linoleum                 :   988 train   246 test
+2026-03-09 13:50:14  INFO      Indoor Tile                     :   224 train    55 test
+2026-03-09 13:50:14  INFO      Curb Up                         :   231 train    57 test
+2026-03-09 13:50:14  INFO      Curb Down                       :   322 train    80 test
+2026-03-09 13:50:14  INFO      Rectangular Paving Tiles        :   235 train    58 test
+2026-03-09 13:50:14  INFO    Training set: 6376 labeled + 23674 unlabeled = 30050 total
+2026-03-09 13:50:14  INFO  
+[2] Labeled-train class distribution:
+2026-03-09 13:50:14  INFO    Class  0: 122 windows
+2026-03-09 13:50:14  INFO    Class  1: 671 windows
+2026-03-09 13:50:14  INFO    Class  2: 511 windows
+2026-03-09 13:50:14  INFO    Class  3: 395 windows
+2026-03-09 13:50:14  INFO    Class  4: 781 windows
+2026-03-09 13:50:14  INFO    Class  5: 938 windows
+2026-03-09 13:50:14  INFO    Class  6: 958 windows
+2026-03-09 13:50:14  INFO    Class  7: 988 windows
+2026-03-09 13:50:14  INFO    Class  8: 224 windows
+2026-03-09 13:50:14  INFO    Class  9: 231 windows
+2026-03-09 13:50:14  INFO    Class 10: 322 windows
+2026-03-09 13:50:14  INFO    Class 11: 235 windows
+2026-03-09 13:50:14  INFO  
+[3] Train TS2Vec on full training set (labeled + unlabeled)
+2026-03-09 13:50:14  INFO  Training TS2Vec — shape=(30050, 1024, 3)  epochs=100
