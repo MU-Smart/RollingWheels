@@ -1,0 +1,224 @@
+2026-03-09 14:00:14  INFO      Log file: /Users/nadim/MyFiles/vscode/RollingWheels/Scripts/attention_simple/logs/run_20260309_140014_24_cosine_results.log
+2026-03-09 14:00:14  INFO      Device: mps
+2026-03-09 14:00:14  INFO      Run timestamp: 20260309_140014
+2026-03-09 14:00:14  INFO      Figures dir  : /Users/nadim/MyFiles/vscode/RollingWheels/Scripts/attention_simple/figures/surface_clustering_24_mps_cosine_result_only_20260309_140014
+2026-03-09 14:00:14  INFO      
+[0] Surface names
+2026-03-09 14:00:14  INFO            1 -> Paving Blocks (Smooth) (Red)
+2026-03-09 14:00:14  INFO            2 -> Concrete Sidewalk
+2026-03-09 14:00:14  INFO            3 -> Smooth Brick (High Street)
+2026-03-09 14:00:14  INFO            4 -> Rough brick (High Street)
+2026-03-09 14:00:14  INFO            5 -> Asphalt / Tar surface
+2026-03-09 14:00:14  INFO            6 -> Indoor Carpet (low-pile)
+2026-03-09 14:00:14  INFO            7 -> Indoor Linoleum
+2026-03-09 14:00:14  INFO            8 -> Indoor Tile
+2026-03-09 14:00:14  INFO            9 -> Curb Up
+2026-03-09 14:00:14  INFO           10 -> Curb Down
+2026-03-09 14:00:14  INFO           11 -> Rectangular Paving Tiles
+2026-03-09 14:00:14  INFO           12 -> Paving Blocks (Rough)
+2026-03-09 14:00:14  INFO      
+[1] Load windowed data (labeled + unlabeled)
+2026-03-09 14:00:14  INFO        Loading: ../../Datasets/ExtractedFeatures/labeled_accelerometer_raw_windows.csv
+2026-03-09 14:00:16  INFO        Rows: 8153088  Windows: 7962
+2026-03-09 14:00:17  INFO        Labeled windows: 7962  Classes: [np.int64(0), np.int64(1), np.int64(2), np.int64(3), np.int64(4), np.int64(6), np.int64(7)]
+2026-03-09 14:00:17  INFO        Loading: ../../Datasets/ExtractedFeatures/unlabeled_accelerometer_raw_windows.csv
+2026-03-09 14:00:23  INFO        Rows: 24242176  Windows: 23674
+2026-03-09 14:00:26  INFO        Unlabeled windows: 23674
+2026-03-09 14:00:26  INFO        Stratified split (labeled only):
+2026-03-09 14:00:26  INFO          Surface 0                     :  1109 train   277 test
+2026-03-09 14:00:26  INFO          Paving Blocks (Smooth) (Red)  :   671 train   167 test
+2026-03-09 14:00:26  INFO          Concrete Sidewalk             :   905 train   226 test
+2026-03-09 14:00:26  INFO          Smooth Brick (High Street)    :  1719 train   429 test
+2026-03-09 14:00:26  INFO          Rough brick (High Street)     :   958 train   239 test
+2026-03-09 14:00:26  INFO          Indoor Carpet (low-pile)      :   454 train   113 test
+2026-03-09 14:00:26  INFO          Indoor Linoleum               :   556 train   139 test
+2026-03-09 14:00:26  INFO      
+[2] Super-class distribution (train):
+2026-03-09 14:00:26  INFO          Paving Blocks (Smooth) / Indoor Tile: 1109 windows
+2026-03-09 14:00:26  INFO          Concrete Sidewalk             : 671 windows
+2026-03-09 14:00:26  INFO          Brick (Smooth + Rough)        : 905 windows
+2026-03-09 14:00:26  INFO          Asphalt + Indoor Carpet       : 1719 windows
+2026-03-09 14:00:26  INFO          Indoor Linoleum               : 958 windows
+2026-03-09 14:00:26  INFO          Curb (Up + Down)              : 454 windows
+2026-03-09 14:00:26  INFO          Rect. Tiles / Paving Blocks (Rough): 556 windows
+2026-03-09 14:00:26  INFO      
+[3] Load VibClustNet (script-24 model) from checkpoint
+2026-03-09 14:00:26  INFO        Loaded: /Users/nadim/MyFiles/vscode/RollingWheels/Scripts/attention_simple/vibclustnet_best_24.pth
+2026-03-09 14:00:26  INFO        Parameters: 513,020
+2026-03-09 14:00:26  INFO      
+[4] Embeddings + PCA (labeled train / test)
+2026-03-09 14:00:42  INFO        PCA: 128d → 6d (var=0.970)
+2026-03-09 14:00:42  INFO      
+[4b] Embed unlabeled windows (23674)
+2026-03-09 14:01:30  INFO        Unlabeled embeddings: (23674, 128)  PCA: (23674, 6)
+2026-03-09 14:01:30  INFO      
+[5] Clustering
+2026-03-09 14:01:30  INFO        Super-classes=7  — sweeping K 5..9
+2026-03-09 14:01:31  INFO          K= 5  sil=0.6167
+2026-03-09 14:01:31  INFO          K= 6  sil=0.6747
+2026-03-09 14:01:32  INFO          K= 7  sil=0.7357
+2026-03-09 14:01:32  INFO          K= 8  sil=0.6650
+2026-03-09 14:01:33  INFO          K= 9  sil=0.6576
+2026-03-09 14:01:33  INFO        Best K=7  sil=0.7357
+2026-03-09 14:01:33  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/17_k_selection_20260309_140014.png
+2026-03-09 14:01:36  INFO          SBScan auto-eps=0.0319  (knee idx=5960/6372)
+2026-03-09 14:01:36  INFO          SBScan: 8 clusters, 6210 non-noise / 6372 total
+2026-03-09 14:01:39  INFO      
+  K-Means cluster → surface (train):
+2026-03-09 14:01:39  INFO          cluster  0 → Brick (Smooth + Rough)
+2026-03-09 14:01:39  INFO          cluster  1 → Asphalt + Indoor Carpet
+2026-03-09 14:01:39  INFO          cluster  2 → Indoor Linoleum
+2026-03-09 14:01:39  INFO          cluster  3 → Paving Blocks (Smooth) / Indoor Tile
+2026-03-09 14:01:39  INFO          cluster  4 → Curb (Up + Down)
+2026-03-09 14:01:39  INFO          cluster  5 → Rect. Tiles / Paving Blocks (Rough)
+2026-03-09 14:01:39  INFO          cluster  6 → Concrete Sidewalk
+2026-03-09 14:01:39  INFO      
+  SBScan cluster → surface (train):
+2026-03-09 14:01:39  INFO          cluster -1 → Surface -1
+2026-03-09 14:01:39  INFO          cluster  0 → Paving Blocks (Smooth) / Indoor Tile
+2026-03-09 14:01:39  INFO          cluster  1 → Concrete Sidewalk
+2026-03-09 14:01:39  INFO          cluster  2 → Brick (Smooth + Rough)
+2026-03-09 14:01:39  INFO          cluster  3 → Asphalt + Indoor Carpet
+2026-03-09 14:01:39  INFO          cluster  4 → Asphalt + Indoor Carpet
+2026-03-09 14:01:39  INFO          cluster  5 → Indoor Linoleum
+2026-03-09 14:01:39  INFO          cluster  6 → Curb (Up + Down)
+2026-03-09 14:01:39  INFO          cluster  7 → Rect. Tiles / Paving Blocks (Rough)
+2026-03-09 14:01:39  INFO      
+[6] Evaluation metrics (labeled)
+2026-03-09 14:01:41  INFO      
+── TRAIN ──────────────────────────────────────
+2026-03-09 14:01:41  INFO      
+            Silhouette      DB        CH    ARI    NMI   Dunn
+KMeans          0.7357  0.6815 5014.9194 0.9644 0.9658 1.1927
+Agg             0.7120  0.7301 4352.6748 0.9817 0.9816 1.0908
+GMM             0.7350  0.6861 4978.1147 0.9616 0.9647 1.1420
+SBScan          0.7362  0.6331 4606.7090 0.9854 0.9851 0.9635
+POS             0.5843  1.1083 3483.5142 0.7952 0.8966 0.3248
+RandAssign     -0.0174 70.9683    1.2061 0.0003 0.0020 0.0112
+GSA             0.5299  1.2056 3008.9927 0.7149 0.8082 0.3197
+RandClust       0.2862  1.8458 1405.6542 0.4513 0.6145 0.2350
+2026-03-09 14:01:42  INFO      
+── TEST ──────────────────────────────────────
+2026-03-09 14:01:42  INFO      
+            Silhouette      DB       CH     ARI    NMI   Dunn
+KMeans          0.6315  0.8193 956.6542  0.8934 0.8954 0.9434
+Agg             0.6157  0.8721 849.4731  0.8931 0.8938 0.8822
+GMM             0.6232  0.8144 945.5995  0.8875 0.8893 0.9378
+SBScan          0.5938  0.7889 802.6595  0.9229 0.9222 0.8308
+POS             0.5141  1.1829 710.5701  0.7322 0.8170 0.3497
+RandAssign     -0.0394 33.5558   1.0690 -0.0003 0.0056 0.0207
+GSA             0.4674  1.2746 632.4037  0.6445 0.7383 0.3379
+RandClust       0.2720  1.4779 297.3550  0.4462 0.5596 0.3792
+2026-03-09 14:01:42  INFO      
+Generalisation gap  (train ARI − test ARI):
+2026-03-09 14:01:42  INFO        KMeans        train=0.9644  test=0.8934  gap=+0.0711  [good]
+2026-03-09 14:01:42  INFO        Agg           train=0.9817  test=0.8931  gap=+0.0886  [good]
+2026-03-09 14:01:43  INFO        GMM           train=0.9616  test=0.8875  gap=+0.0741  [good]
+2026-03-09 14:01:43  INFO        SBScan        train=0.9854  test=0.9229  gap=+0.0625  [good]
+2026-03-09 14:01:43  INFO        POS           train=0.7952  test=0.7322  gap=+0.0630  [good]
+2026-03-09 14:01:44  INFO        RandAssign    train=0.0003  test=-0.0003  gap=+0.0006  [good]
+2026-03-09 14:01:44  INFO        GSA           train=0.7149  test=0.6445  gap=+0.0704  [good]
+2026-03-09 14:01:44  INFO        RandClust     train=0.4513  test=0.4462  gap=+0.0051  [good]
+2026-03-09 14:02:11  INFO      
+── UNLABELED (unsupervised + ARI/NMI vs KMeans pseudo-GT) ──────────
+2026-03-09 14:02:11  INFO      
+            Silhouette       DB        CH   Dunn  ARI_vs_KM  NMI_vs_KM
+KMeans          0.4430   1.3345 4685.2500 0.4655     1.0000     1.0000
+Agg             0.3597   1.4477 4924.6562 0.4915     0.8547     0.7803
+GMM             0.4063   1.4399 5310.6235 0.4906     0.7504     0.6724
+SBScan          0.4025   1.3852 4244.3252 0.5109     0.8283     0.7432
+POS             0.4008   1.4102 3670.9949 0.4711     0.7468     0.6570
+RandAssign     -0.0118 222.2480    0.6815 0.0031    -0.0001     0.0003
+GSA             0.4566   1.2861 4161.8101 0.5023     0.8186     0.7021
+RandClust       0.2890   1.6776 6432.4756 0.3797     0.4379     0.4661
+2026-03-09 14:02:11  INFO      
+[6b] Save unlabeled predictions
+2026-03-09 14:02:11  INFO        Unlabeled predictions saved: /Users/nadim/MyFiles/vscode/RollingWheels/Scripts/attention_simple/24_cosine_results_unlabeled_predictions.csv  (23674 windows)
+2026-03-09 14:02:11  INFO      
+[7] t-SNE + UMAP visualisation (labeled test split)
+2026-03-09 14:02:11  INFO        t-SNE [Test]...
+2026-03-09 14:02:13  INFO        UMAP [Test]...
+2026-03-09 14:02:19  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/18_tsne_test_clusters_20260309_140014.png
+2026-03-09 14:02:19  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/tsne_K-Means_20260309_140014.png
+2026-03-09 14:02:19  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/tsne_Agglomerative_20260309_140014.png
+2026-03-09 14:02:19  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/tsne_GMM_20260309_140014.png
+2026-03-09 14:02:19  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/tsne_SBScan_20260309_140014.png
+2026-03-09 14:02:19  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/tsne_PSO_20260309_140014.png
+2026-03-09 14:02:19  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/tsne_RandomAssign_20260309_140014.png
+2026-03-09 14:02:19  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/tsne_GravitationalSearch_20260309_140014.png
+2026-03-09 14:02:19  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/tsne_RandomClustering_20260309_140014.png
+2026-03-09 14:02:20  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/tsne_GroundTruth_20260309_140014.png
+2026-03-09 14:02:20  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/umap_K-Means_20260309_140014.png
+2026-03-09 14:02:20  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/umap_Agglomerative_20260309_140014.png
+2026-03-09 14:02:20  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/umap_GMM_20260309_140014.png
+2026-03-09 14:02:20  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/umap_SBScan_20260309_140014.png
+2026-03-09 14:02:20  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/umap_PSO_20260309_140014.png
+2026-03-09 14:02:20  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/umap_RandomAssign_20260309_140014.png
+2026-03-09 14:02:20  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/umap_GravitationalSearch_20260309_140014.png
+2026-03-09 14:02:20  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/umap_RandomClustering_20260309_140014.png
+2026-03-09 14:02:20  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/umap_GroundTruth_20260309_140014.png
+2026-03-09 14:02:20  INFO      
+  Fixed-K experiment  K=[3, 5, 7, 11]
+2026-03-09 14:02:21  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/20_fixed_k_tsne_20260309_140014.png
+2026-03-09 14:02:21  INFO      
+  Cluster quality — t-SNE projection:
+2026-03-09 14:02:21  INFO        K          Silhouette   Davies-Bouldin  Quality
+2026-03-09 14:02:21  INFO        ----------------------------------------------
+2026-03-09 14:02:21  INFO        K=3            0.4793           1.3598  Good
+2026-03-09 14:02:21  INFO        K=5            0.5387           1.0520  Good
+2026-03-09 14:02:21  INFO        K=7            0.6328           0.8333  Excellent
+2026-03-09 14:02:21  INFO        K=11           0.5174           1.3234  Good
+2026-03-09 14:02:22  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/20_fixed_k_umap_20260309_140014.png
+2026-03-09 14:02:22  INFO      
+  Cluster quality — UMAP projection:
+2026-03-09 14:02:22  INFO        K          Silhouette   Davies-Bouldin  Quality
+2026-03-09 14:02:22  INFO        ----------------------------------------------
+2026-03-09 14:02:22  INFO        K=3            0.4793           1.3598  Good
+2026-03-09 14:02:22  INFO        K=5            0.5387           1.0520  Good
+2026-03-09 14:02:22  INFO        K=7            0.6328           0.8333  Excellent
+2026-03-09 14:02:22  INFO        K=11           0.5174           1.3234  Good
+2026-03-09 14:02:22  INFO      
+[8] VibClustNet diagnostic plots (labeled test)
+2026-03-09 14:02:27  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/vcn_temporal_attention_20260309_140014.png
+2026-03-09 14:02:28  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/vcn_caim_heatmap_20260309_140014.png
+2026-03-09 14:02:29  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/vcn_reconstruction_20260309_140014.png
+2026-03-09 14:02:29  INFO      
+[9] Unlabeled visualisation (23674 windows)
+2026-03-09 14:02:29  INFO        t-SNE [Unlabeled]...
+2026-03-09 14:03:16  INFO        UMAP [Unlabeled]...
+2026-03-09 14:03:30  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/19_tsne_unlabeled_clusters_20260309_140014.png
+2026-03-09 14:03:30  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/tsne_unlabeled_K-Means_20260309_140014.png
+2026-03-09 14:03:30  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/tsne_unlabeled_Agglomerative_20260309_140014.png
+2026-03-09 14:03:30  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/tsne_unlabeled_GMM_20260309_140014.png
+2026-03-09 14:03:30  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/tsne_unlabeled_SBScan_20260309_140014.png
+2026-03-09 14:03:30  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/tsne_unlabeled_PSO_20260309_140014.png
+2026-03-09 14:03:31  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/tsne_unlabeled_RandomAssign_20260309_140014.png
+2026-03-09 14:03:31  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/tsne_unlabeled_GravitationalSearch_20260309_140014.png
+2026-03-09 14:03:31  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/tsne_unlabeled_RandomClustering_20260309_140014.png
+2026-03-09 14:03:32  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/19_umap_unlabeled_clusters_20260309_140014.png
+2026-03-09 14:03:32  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/umap_unlabeled_K-Means_20260309_140014.png
+2026-03-09 14:03:32  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/umap_unlabeled_Agglomerative_20260309_140014.png
+2026-03-09 14:03:32  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/umap_unlabeled_GMM_20260309_140014.png
+2026-03-09 14:03:32  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/umap_unlabeled_SBScan_20260309_140014.png
+2026-03-09 14:03:32  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/umap_unlabeled_PSO_20260309_140014.png
+2026-03-09 14:03:33  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/umap_unlabeled_RandomAssign_20260309_140014.png
+2026-03-09 14:03:33  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/umap_unlabeled_GravitationalSearch_20260309_140014.png
+2026-03-09 14:03:33  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/umap_unlabeled_RandomClustering_20260309_140014.png
+2026-03-09 14:03:33  INFO      
+  Fixed-K experiment on unlabeled data
+2026-03-09 14:03:48  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/21_fixed_k_tsne_unlabeled_20260309_140014.png
+2026-03-09 14:03:48  INFO        K          Silhouette   Davies-Bouldin  Quality
+2026-03-09 14:03:48  INFO        ----------------------------------------------
+2026-03-09 14:03:48  INFO        K=3            0.4984           1.3498  Good
+2026-03-09 14:03:48  INFO        K=5            0.4042           1.4027  Good
+2026-03-09 14:03:48  INFO        K=7            0.3595           1.4150  Fair
+2026-03-09 14:03:48  INFO        K=11           0.3136           1.4056  Fair
+2026-03-09 14:04:02  INFO        Saved figures/surface_clustering_24_mps_cosine_result_only_20260309_140014/21_fixed_k_umap_unlabeled_20260309_140014.png
+2026-03-09 14:04:02  INFO        K          Silhouette   Davies-Bouldin  Quality
+2026-03-09 14:04:02  INFO        ----------------------------------------------
+2026-03-09 14:04:02  INFO        K=3            0.4984           1.3498  Good
+2026-03-09 14:04:02  INFO        K=5            0.4042           1.4027  Good
+2026-03-09 14:04:02  INFO        K=7            0.3595           1.4150  Fair
+2026-03-09 14:04:02  INFO        K=11           0.3136           1.4056  Fair
+2026-03-09 14:04:02  INFO      
+[9b] VibClustNet diagnostic plots (unlabeled)
