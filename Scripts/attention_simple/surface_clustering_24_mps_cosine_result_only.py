@@ -94,7 +94,7 @@ CONFIG = {
     # VibClustNet (script-24 architecture)
     "vcn_embedding_dim"      : 128,
     "vcn_checkpoint"         : Path("vibclustnet_best_24.pth"),
-    "vcn_cls_weight"         : 1.0,
+    "vcn_cls_weight"         : 5.0,
 
     # Output directories
     "figures_base"           : Path("figures"),
@@ -1241,7 +1241,7 @@ def main():
     logger.info("\n[5] Clustering")
     n_surf = N_SUPER_CLASSES
     logger.info(f"  Super-classes={n_surf}  — sweeping K {max(2,n_surf-2)}..{n_surf+2}")
-    k = best_k(tr_pca, max(2, n_surf - 2), n_surf + 2, figures_dir)
+    k = best_k(xu_pca, 2, n_surf + 2, figures_dir)
     tr_pred, te_pred, xu_pred, _ = cluster_all(
         tr_norm, tr_pca, te_norm, te_pca, k,
         xu_norm=xu_norm, xu_pca=xu_pca)

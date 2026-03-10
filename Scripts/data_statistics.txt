@@ -1,0 +1,214 @@
+================================================================================
+  OVERALL SUMMARY
+================================================================================
+  Category                            Value
+  --------------------------------------------------------------------------------
+  Total frames                        52,146,304
+    → Labeled frames                  31,612,466
+    → Unlabeled frames                20,533,838
+  Total recording duration            183:27:46.737
+    → Labeled duration                13:39:40.182
+    → Unlabeled duration              169:48:06.555
+  Countries                           ['Austria', 'France', 'Germany', 'USA', 'Vietnam']
+    → Labeled                         ['USA', 'Vietnam']
+    → Unlabeled                       ['Austria', 'France', 'Germany']
+  Labeled surface types               12 (['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'])
+  Labeled phone models                ['RedMi_Note7', 'RedmiNote7', 'Redmi_Note7', 'SamsungGalaxyJ7', 'SamsungGalaxyS7', 'SamsungGalaxyS9']
+  Unlabeled phone identifiers         ['Phone 7', 'Phone 8', 'Phone 9']
+================================================================================
+
+================================================================================
+  LABELED DATA  (Labeled_Data_Without_GPS)
+================================================================================
+
+  Country: USA
+  Surface                                        Files      Frames   Duration (hh:mm:ss)
+  --------------------------------------------------------------------------------
+  [ 1] Paving Blocks (Smooth) (Red)                  2     404,698          00:06:45.236
+       Phones   : SamsungGalaxyS7(2)
+       Sensors  : Accelerometer(202,479), Gyroscope(202,219)
+       Subjects : 2 unique
+       Exps     : 2 unique
+       Dates    : 2019-08-30 → 2019-08-30
+  [ 2] Concrete Sidewalk                            29   3,478,171          01:24:31.808
+       Phones   : SamsungGalaxyJ7(12), SamsungGalaxyS7(17)
+       Sensors  : Accelerometer(1,750,478), Gyroscope(1,727,693)
+       Subjects : 15 unique
+       Exps     : 12 unique
+       Dates    : 2019-02-27 → 2019-09-02
+  [ 3] Smooth Brick (High Street)                   20   2,371,314          01:00:08.930
+       Phones   : SamsungGalaxyJ7(10), SamsungGalaxyS7(10)
+       Sensors  : Accelerometer(1,186,702), Gyroscope(1,184,612)
+       Subjects : 10 unique
+       Exps     : 10 unique
+       Dates    : 2019-09-02 → 2019-09-02
+  [ 4] Rough brick (High Street)                    15   2,225,517          00:44:36.954
+       Phones   : SamsungGalaxyJ7(5), SamsungGalaxyS7(10)
+       Sensors  : Accelerometer(1,114,148), Gyroscope(1,111,369)
+       Subjects : 10 unique
+       Exps     : 10 unique
+       Dates    : 2019-09-02 → 2019-09-02
+  [ 5] Asphalt / Tar surface                        30   3,941,854          01:33:16.793
+       Phones   : SamsungGalaxyJ7(11), SamsungGalaxyS7(19)
+       Sensors  : Accelerometer(1,972,388), Gyroscope(1,969,466)
+       Subjects : 15 unique
+       Exps     : 19 unique
+       Dates    : 2019-02-27 → 2019-09-02
+  [ 6] Indoor Carpet (low-pile)                     45   4,433,067          02:04:22.788
+       Phones   : SamsungGalaxyJ7(18), SamsungGalaxyS7(23), SamsungGalaxyS9(4)
+       Sensors  : Accelerometer(2,217,317), Gyroscope(2,215,750)
+       Subjects : 9 unique
+       Exps     : 11 unique
+       Dates    : 2019-01-07 → 2019-09-08
+  [ 7] Indoor Linoleum                              48   4,638,148          02:06:45.016
+       Phones   : SamsungGalaxyJ7(18), SamsungGalaxyS7(24), SamsungGalaxyS9(6)
+       Sensors  : Accelerometer(2,320,267), Gyroscope(2,317,881)
+       Subjects : 9 unique
+       Exps     : 13 unique
+       Dates    : 2019-01-07 → 2019-09-08
+  [ 8] Indoor Tile                                  46   4,315,726          02:01:48.524
+       Phones   : SamsungGalaxyJ7(19), SamsungGalaxyS7(23), SamsungGalaxyS9(4)
+       Sensors  : Accelerometer(2,158,566), Gyroscope(2,157,160), subject 3(207,390)
+       Subjects : 9 unique
+       Exps     : 13 unique
+       Dates    : 2019-01-07 → 2019-09-08
+  [ 9] Curb Up                                     204   1,362,925          00:28:00.773
+       Phones   : SamsungGalaxyJ7(75), SamsungGalaxyS7(129)
+       Sensors  : Accelerometer(687,413), Gyroscope(640,067), K6DS3TR Gyroscope Sensor(35,445)
+       Subjects : 17 unique
+       Exps     : 95 unique
+       Dates    : 2019-02-05 → 2020-05-02
+  [10] Curb Down                                   206   1,422,907          00:29:05.296
+       Phones   : SamsungGalaxyJ7(75), SamsungGalaxyS7(131)
+       Sensors  : Accelerometer(717,983), Gyroscope(668,165), K6DS3TR Gyroscope Sensor(36,759)
+       Subjects : 17 unique
+       Exps     : 92 unique
+       Dates    : 2019-02-05 → 2020-05-02
+  --------------------------------------------------------------------------------
+  Country total                                         28,594,327          11:59:22.118
+
+  Country: Vietnam
+  Surface                                        Files      Frames   Duration (hh:mm:ss)
+  --------------------------------------------------------------------------------
+  [ 1] Paving Blocks (Smooth) (Red)                  3     278,386          00:09:15.075
+       Phones   : RedMi_Note7(3)
+       Sensors  : ICM20607(278,386), Accelerometer(139,234), Gyroscope(139,152)
+       Exps     : 3 unique
+       Dates    : 2021-07-05 → 2021-07-05
+  [ 5] Asphalt / Tar surface                         3     273,577          00:09:05.486
+       Phones   : Redmi_Note7(1)
+       Sensors  : Accelerometer(136,829), Gyroscope(136,748), ICM20607(91,669)
+       Exps     : 1 unique
+       Dates    : 2021-07-10 → 2021-07-10
+  [ 8] Indoor Tile                                   3     272,954          00:09:04.253
+       Phones   : RedmiNote7(1), Redmi_Note7(1)
+       Sensors  : ICM20607(182,023), Accelerometer(136,524), Gyroscope(136,430)
+       Exps     : 2 unique
+       Dates    : 2021-07-12 → 2021-07-12
+  [11] Rectangular Paving Tiles                     14   1,269,719          00:42:11.720
+       Phones   : RedMi_Note7(5), RedmiNote7(1), Redmi_Note7(8)
+       Sensors  : ICM20607(1,269,719), Accelerometer(635,044), Gyroscope(634,675)
+       Exps     : 8 unique
+       Dates    : 2021-07-05 → 2021-07-29
+  [12] Paving Blocks (Rough)                        10     923,503          00:30:41.530
+       Phones   : RedmiNote7(2), Redmi_Note7(4)
+       Sensors  : ICM20607(552,650), Accelerometer(461,912), Gyroscope(461,591)
+       Exps     : 4 unique
+       Dates    : 2021-07-10 → 2021-07-29
+  --------------------------------------------------------------------------------
+  Country total                                          3,018,139          01:40:18.064
+
+  --------------------------------------------------------------------------------
+  LABELED GRAND TOTAL                                   31,612,466          13:39:40.182
+
+================================================================================
+  UNLABELED DATA  (Unlabeled_Data_With_GPS)
+================================================================================
+
+  Continent: Europe
+
+    Country: Austria
+
+      Phone 7
+        Files    : 6
+        Frames   : 3,864,001
+        Duration : 30:19:14.921
+        Accelerometer : 1,916,447 frames
+        Gyroscope     : 1,916,447 frames
+        GPS           : 31,107 frames
+        Locations: Mirabellplatz, Outskarts Salzburg
+
+      Phone 8
+        Files    : 2
+        Frames   : 26,727
+        Duration : 07:54:34.325
+        GPS           : 26,727 frames
+        Locations: Mirabellplatz, Outskarts Salzburg
+
+      Phone 9
+        Files    : 6
+        Frames   : 3,877,804
+        Duration : 26:32:42.910
+        Accelerometer : 1,937,642 frames
+        Gyroscope     : 1,937,642 frames
+        GPS           : 2,520 frames
+        Locations: Mirabellplatz, Outskarts Salzburg
+
+    Country: France
+
+      Phone 7
+        Files    : 9
+        Frames   : 1,570,295
+        Duration : 13:06:39.173
+        Gyroscope     : 777,341 frames
+        Accelerometer : 777,272 frames
+        GPS           : 15,682 frames
+        Locations: Avenue des Champs Elysees, Eiffel Tower, Notre Dame Paris
+
+      Phone 8
+        Files    : 3
+        Frames   : 15,753
+        Duration : 04:22:29.000
+        GPS           : 15,753 frames
+        Locations: Avenue des Champs Elysees, Eiffel Tower, Notre Dame Paris
+
+      Phone 9
+        Files    : 9
+        Frames   : 1,573,936
+        Duration : 12:09:47.153
+        Gyroscope     : 786,224 frames
+        Accelerometer : 786,157 frames
+        GPS           : 1,555 frames
+        Locations: Avenue des Champs Elysees, Eiffel Tower, Notre Dame Paris
+
+    Country: Germany
+
+      Phone 7
+        Files    : 15
+        Frames   : 3,177,809
+        Duration : 25:50:00.905
+        Accelerometer : 1,576,044 frames
+        Gyroscope     : 1,575,943 frames
+        GPS           : 25,822 frames
+        Locations: Basteistrasse Dresden, Dresden Bischofsplatz Dresden, Nazi Party Rally Ground Nuremberg, Old Town Nuremberg Nuremberg, Schloss Moritzburg Dresden
+
+      Phone 8
+        Files    : 15
+        Frames   : 3,218,063
+        Duration : 25:43:39.919
+        Gyroscope     : 1,595,962 frames
+        Accelerometer : 1,595,942 frames
+        GPS           : 26,159 frames
+        Locations: Basteistrasse Dresden, Dresden Bischofsplatz Dresden, Nazi Party Rally Ground Nuremberg, Old Town Nuremberg Nuremberg, Schloss Moritzburg Dresden
+
+      Phone 9
+        Files    : 15
+        Frames   : 3,209,450
+        Duration : 23:48:58.249
+        Accelerometer : 1,605,611 frames
+        Gyroscope     : 1,600,989 frames
+        GPS           : 2,850 frames
+        Locations: Basteistrasse Dresden, Dresden Bischofsplatz Dresden, Nazi Party Rally Ground Nuremberg, Old Town Nuremberg Nuremberg, Schloss Moritzburg Dresden
+
+  --------------------------------------------------------------------------------
+  UNLABELED GRAND TOTAL  frames=20,533,838  duration=169:48:06.555

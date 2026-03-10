@@ -1,0 +1,111 @@
+2026-03-10 01:31:02  INFO      Log file: /Users/nadim/MyFiles/vscode/RollingWheels/Scripts/attention_simple/logs/run_20260310_013102_26_cosine_results.log
+2026-03-10 01:31:02  INFO      Device: mps
+2026-03-10 01:31:02  INFO      Run timestamp: 20260310_013102
+2026-03-10 01:31:02  INFO      Figures dir  : /Users/nadim/MyFiles/vscode/RollingWheels/Scripts/attention_simple/figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102
+2026-03-10 01:31:02  INFO      
+[1] Load all windowed data (no labels) — global normalisation
+2026-03-10 01:31:02  INFO        Loading: ../../Datasets/ExtractedFeatures/labeled_accelerometer_raw_windows.csv
+2026-03-10 01:31:04  INFO        Rows: 8153088  Windows: 7962
+2026-03-10 01:31:04  INFO        Auto-detected sensor columns: ['valueX', 'valueY', 'valueZ']
+2026-03-10 01:31:05  INFO        Loading: ../../Datasets/ExtractedFeatures/unlabeled_accelerometer_raw_windows.csv
+2026-03-10 01:31:11  INFO        Rows: 24242176  Windows: 23674
+2026-03-10 01:31:11  INFO        Auto-detected sensor columns: ['valueX', 'valueY', 'valueZ']
+2026-03-10 01:31:14  INFO        Total windows: 31636  Channels: 3  T: 1024  Cols: ['valueX', 'valueY', 'valueZ']
+2026-03-10 01:31:14  INFO        Global norm  mean=-0.0017  std=0.7472
+2026-03-10 01:31:14  INFO        Train: 25309  Test: 6327
+2026-03-10 01:31:15  INFO        Window length T=1024  Channels=3
+2026-03-10 01:31:15  INFO      
+[2] Load VibClustNet (script-26 model) from checkpoint
+2026-03-10 01:31:15  INFO        Loaded: /Users/nadim/MyFiles/vscode/RollingWheels/Scripts/attention_simple/vibclustnet_best_26.pth
+2026-03-10 01:31:15  INFO        Parameters: 606,036
+2026-03-10 01:31:15  INFO      
+[3] Extract embeddings + PCA
+2026-03-10 01:34:06  INFO        PCA: 64 → 38 dims  (95% variance)
+2026-03-10 01:34:06  INFO        Train PCA: (25309, 38)  All PCA: (31636, 38)
+2026-03-10 01:34:06  INFO      
+[4] Select K (cosine silhouette sweep on train embeddings, K=3..12)
+2026-03-10 01:34:13  INFO          K= 3  sil=0.1836
+2026-03-10 01:34:19  INFO          K= 4  sil=0.2013
+2026-03-10 01:34:24  INFO          K= 5  sil=0.2232
+2026-03-10 01:34:30  INFO          K= 6  sil=0.2480
+2026-03-10 01:34:36  INFO          K= 7  sil=0.2569
+2026-03-10 01:34:41  INFO          K= 8  sil=0.2683
+2026-03-10 01:34:46  INFO          K= 9  sil=0.2879
+2026-03-10 01:34:52  INFO          K=10  sil=0.3063
+2026-03-10 01:34:58  INFO          K=11  sil=0.3282
+2026-03-10 01:35:04  INFO          K=12  sil=0.3348
+2026-03-10 01:35:04  INFO        Best K=12  sil=0.3348
+2026-03-10 01:35:04  INFO        Saved figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102/17_k_selection_20260310_013102.png
+2026-03-10 01:35:04  INFO      
+[5] Clustering  K=12  (cosine distance, 8 methods)
+2026-03-10 01:36:25  INFO          SBScan auto-eps=0.1527  (knee idx=21745/25309)
+2026-03-10 01:36:28  INFO          SBScan: 38 clusters, 23340 non-noise / 25309 total
+2026-03-10 01:37:07  INFO      
+[6] Unsupervised metrics (all windows)
+2026-03-10 01:38:05  INFO      
+── ALL DATA (unsupervised + ARI/NMI vs KMeans pseudo-GT) ──────────
+2026-03-10 01:38:05  INFO      
+            Silhouette      DB        CH   Dunn  ARI_vs_KM  NMI_vs_KM
+KMeans          0.3345  2.3365 1867.0433 0.2612     1.0000     1.0000
+Agg             0.1540  2.2603  896.7151 0.2924     0.2102     0.5135
+GMM             0.2146  2.8419 1264.0280 0.2648     0.4791     0.6148
+SBScan         -0.2620  1.6848    6.8892 0.2141    -0.0025     0.0154
+PSO             0.2041  2.5788 1332.3307 0.2650     0.3272     0.5347
+RandAssign     -0.0053 90.1619    0.9553 0.0104    -0.0000     0.0008
+GSA             0.1959  2.7217 1273.6931 0.2459     0.2849     0.4740
+RandClust       0.1761  2.8616 1180.1024 0.2268     0.3777     0.4999
+2026-03-10 01:38:05  INFO      
+[7] Save predictions
+2026-03-10 01:38:05  INFO        Predictions saved: /Users/nadim/MyFiles/vscode/RollingWheels/Scripts/attention_simple/26_cosine_results_unlabeled_predictions.csv  (31636 windows)
+2026-03-10 01:38:05  INFO      
+[8] t-SNE + UMAP visualisation (all windows)
+2026-03-10 01:38:05  INFO        Sub-sampled 5000/31636 windows for projections
+2026-03-10 01:38:05  INFO        t-SNE [All]...
+2026-03-10 01:38:16  INFO        UMAP [All]...
+2026-03-10 01:38:28  INFO        Saved figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102/19_tsne_all_clusters_20260310_013102.png
+2026-03-10 01:38:29  INFO        Saved figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102/tsne_K-Means_20260310_013102.png
+2026-03-10 01:38:29  INFO        Saved figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102/tsne_Agglomerative_20260310_013102.png
+2026-03-10 01:38:29  INFO        Saved figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102/tsne_GMM_20260310_013102.png
+2026-03-10 01:38:29  INFO        Saved figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102/tsne_SBScan_20260310_013102.png
+2026-03-10 01:38:29  INFO        Saved figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102/tsne_PSO_20260310_013102.png
+2026-03-10 01:38:29  INFO        Saved figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102/tsne_RandomAssign_20260310_013102.png
+2026-03-10 01:38:29  INFO        Saved figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102/tsne_GravitationalSearch_20260310_013102.png
+2026-03-10 01:38:30  INFO        Saved figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102/tsne_RandomClustering_20260310_013102.png
+2026-03-10 01:38:31  INFO        Saved figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102/19_umap_all_clusters_20260310_013102.png
+2026-03-10 01:38:31  INFO        Saved figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102/umap_K-Means_20260310_013102.png
+2026-03-10 01:38:31  INFO        Saved figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102/umap_Agglomerative_20260310_013102.png
+2026-03-10 01:38:31  INFO        Saved figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102/umap_GMM_20260310_013102.png
+2026-03-10 01:38:31  INFO        Saved figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102/umap_SBScan_20260310_013102.png
+2026-03-10 01:38:31  INFO        Saved figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102/umap_PSO_20260310_013102.png
+2026-03-10 01:38:32  INFO        Saved figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102/umap_RandomAssign_20260310_013102.png
+2026-03-10 01:38:32  INFO        Saved figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102/umap_GravitationalSearch_20260310_013102.png
+2026-03-10 01:38:32  INFO        Saved figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102/umap_RandomClustering_20260310_013102.png
+2026-03-10 01:38:32  INFO      
+[9] Fixed-K experiments  K=(3, 5, 7, 11)
+2026-03-10 01:38:32  INFO      
+  Fixed-K experiment  K=[3, 5, 7, 11]
+2026-03-10 01:38:35  INFO        Saved figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102/20_fixed_k_tsne_20260310_013102.png
+2026-03-10 01:38:35  INFO      
+  Cluster quality — t-SNE projection:
+2026-03-10 01:38:35  INFO        K          Silhouette   Davies-Bouldin  Quality
+2026-03-10 01:38:35  INFO        ----------------------------------------------
+2026-03-10 01:38:35  INFO        K=3            0.1837           2.0748  Poor
+2026-03-10 01:38:35  INFO        K=5            0.2242           2.9186  Fair
+2026-03-10 01:38:35  INFO        K=7            0.2607           2.6907  Fair
+2026-03-10 01:38:35  INFO        K=11           0.3272           2.3212  Fair
+2026-03-10 01:38:39  INFO        Saved figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102/20_fixed_k_umap_20260310_013102.png
+2026-03-10 01:38:39  INFO      
+  Cluster quality — UMAP projection:
+2026-03-10 01:38:39  INFO        K          Silhouette   Davies-Bouldin  Quality
+2026-03-10 01:38:39  INFO        ----------------------------------------------
+2026-03-10 01:38:39  INFO        K=3            0.1837           2.0748  Poor
+2026-03-10 01:38:39  INFO        K=5            0.2242           2.9186  Fair
+2026-03-10 01:38:39  INFO        K=7            0.2607           2.6907  Fair
+2026-03-10 01:38:39  INFO        K=11           0.3272           2.3212  Fair
+2026-03-10 01:38:39  INFO      
+[10] VibClustNet diagnostic plots
+2026-03-10 01:39:05  INFO        Saved figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102/vcn_temporal_attention_20260310_013102.png
+2026-03-10 01:39:06  INFO        Saved figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102/vcn_caim_heatmap_20260310_013102.png
+2026-03-10 01:39:07  INFO        Saved figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102/vcn_reconstruction_20260310_013102.png
+2026-03-10 01:39:07  INFO      
+Done!  All plots saved to: /Users/nadim/MyFiles/vscode/RollingWheels/Scripts/attention_simple/figures/surface_clustering_26_unsup_res_gen_mps_20260310_013102

@@ -1,0 +1,209 @@
+2026-03-10 00:22:57  INFO      Log file: /Users/nadim/MyFiles/vscode/RollingWheels/Scripts/results_generations/logs/run_20260310_002257_moments_cosine_results.log
+2026-03-10 00:22:57  INFO      Device: mps
+2026-03-10 00:22:57  INFO      Run timestamp: 20260310_002257
+2026-03-10 00:22:57  INFO      Figures dir  : /Users/nadim/MyFiles/vscode/RollingWheels/Scripts/results_generations/figures/clustering_moments_20260310_002257
+2026-03-10 00:22:57  INFO      
+[0] Surface names
+2026-03-10 00:22:57  INFO            1 -> Paving Blocks (Smooth) (Red)
+2026-03-10 00:22:57  INFO            2 -> Concrete Sidewalk
+2026-03-10 00:22:57  INFO            3 -> Smooth Brick (High Street)
+2026-03-10 00:22:57  INFO            4 -> Rough brick (High Street)
+2026-03-10 00:22:57  INFO            5 -> Asphalt / Tar surface
+2026-03-10 00:22:57  INFO            6 -> Indoor Carpet (low-pile)
+2026-03-10 00:22:57  INFO            7 -> Indoor Linoleum
+2026-03-10 00:22:57  INFO            8 -> Indoor Tile
+2026-03-10 00:22:57  INFO            9 -> Curb Up
+2026-03-10 00:22:57  INFO           10 -> Curb Down
+2026-03-10 00:22:57  INFO           11 -> Rectangular Paving Tiles
+2026-03-10 00:22:57  INFO           12 -> Paving Blocks (Rough)
+2026-03-10 00:22:57  INFO      
+[1] Load windowed data (labeled + unlabeled)
+2026-03-10 00:22:57  INFO        Loading: ../../Datasets/ExtractedFeatures/labeled_accelerometer_raw_windows.csv
+2026-03-10 00:22:59  INFO        Rows: 8153088  Windows: 7962
+2026-03-10 00:23:00  INFO        Labeled windows: 7962  Classes: [0, 1, 2, 3, 4, 6, 7]
+2026-03-10 00:23:00  INFO        Loading: ../../Datasets/ExtractedFeatures/unlabeled_accelerometer_raw_windows.csv
+2026-03-10 00:23:06  INFO        Rows: 24242176  Windows: 23674
+2026-03-10 00:23:10  INFO        Unlabeled windows: 23674
+2026-03-10 00:23:10  INFO        Stratified split (labeled only):
+2026-03-10 00:23:10  INFO          Surface 0                     :  1109 train   277 test
+2026-03-10 00:23:10  INFO          Paving Blocks (Smooth) (Red)  :   671 train   167 test
+2026-03-10 00:23:10  INFO          Concrete Sidewalk             :   905 train   226 test
+2026-03-10 00:23:10  INFO          Smooth Brick (High Street)    :  1719 train   429 test
+2026-03-10 00:23:10  INFO          Rough brick (High Street)     :   958 train   239 test
+2026-03-10 00:23:10  INFO          Indoor Carpet (low-pile)      :   454 train   113 test
+2026-03-10 00:23:10  INFO          Indoor Linoleum               :   556 train   139 test
+2026-03-10 00:23:10  INFO      
+[2] Super-class distribution (train):
+2026-03-10 00:23:10  INFO          Paving Blocks (Smooth) / Indoor Tile: 1109 windows
+2026-03-10 00:23:10  INFO          Concrete Sidewalk             : 671 windows
+2026-03-10 00:23:10  INFO          Brick (Smooth + Rough)        : 905 windows
+2026-03-10 00:23:10  INFO          Asphalt + Indoor Carpet       : 1719 windows
+2026-03-10 00:23:10  INFO          Indoor Linoleum               : 958 windows
+2026-03-10 00:23:10  INFO          Curb (Up + Down)              : 454 windows
+2026-03-10 00:23:10  INFO          Rect. Tiles / Paving Blocks (Rough): 556 windows
+2026-03-10 00:23:10  INFO      
+[3] Load MOMENT pipeline: AutonLab/MOMENT-1-large
+2026-03-10 00:26:45  INFO        Parameters: 341,240,320
+2026-03-10 00:26:45  INFO      
+[4] Embeddings + PCA (labeled train / test)
+2026-03-10 00:38:24  INFO        PCA: 1024d → 136d (var=0.950)
+2026-03-10 00:38:24  INFO      
+[4b] Embed unlabeled windows (23674)
+2026-03-10 01:20:42  INFO        Unlabeled embeddings: (23674, 1024)  PCA: (23674, 136)
+2026-03-10 01:20:42  INFO      
+[5] Clustering
+2026-03-10 01:20:42  INFO        Super-classes=7  — sweeping K 5..9
+2026-03-10 01:20:45  INFO          K= 5  sil=0.2614
+2026-03-10 01:20:48  INFO          K= 6  sil=0.2073
+2026-03-10 01:20:52  INFO          K= 7  sil=0.1802
+2026-03-10 01:20:56  INFO          K= 8  sil=0.1764
+2026-03-10 01:21:01  INFO          K= 9  sil=0.1493
+2026-03-10 01:21:01  INFO        Best K=5  sil=0.2614
+2026-03-10 01:21:03  INFO        Saved figures/clustering_moments_20260310_002257/17_k_selection_20260310_002257.png
+2026-03-10 01:21:34  INFO          SBScan auto-eps=0.3642  (knee idx=5549/6372)
+2026-03-10 01:21:34  INFO          SBScan: 1 clusters, 5919 non-noise / 6372 total
+2026-03-10 01:21:43  INFO      
+  K-Means cluster → surface (train):
+2026-03-10 01:21:43  INFO          cluster  0 → Asphalt + Indoor Carpet
+2026-03-10 01:21:43  INFO          cluster  1 → Asphalt + Indoor Carpet
+2026-03-10 01:21:43  INFO          cluster  2 → Curb (Up + Down)
+2026-03-10 01:21:43  INFO          cluster  3 → Paving Blocks (Smooth) / Indoor Tile
+2026-03-10 01:21:43  INFO          cluster  4 → Asphalt + Indoor Carpet
+2026-03-10 01:21:43  INFO      
+  SBScan cluster → surface (train):
+2026-03-10 01:21:43  INFO          cluster -1 → Surface -1
+2026-03-10 01:21:43  INFO          cluster  0 → Asphalt + Indoor Carpet
+2026-03-10 01:21:43  INFO      
+[6] Evaluation metrics (labeled)
+2026-03-10 01:21:46  INFO      
+── TRAIN ──────────────────────────────────────
+2026-03-10 01:21:46  INFO      
+            Silhouette      DB       CH    ARI    NMI   Dunn
+KMeans          0.2614  2.1293 959.1052 0.0865 0.1503 0.4165
+Agg             0.1582  2.5685 650.2388 0.0824 0.1276 0.3586
+GMM             0.2005  2.4252 885.6005 0.0855 0.1594 0.3596
+SBScan             NaN     NaN      NaN    NaN    NaN    NaN
+POS             0.2101  2.4191 886.8021 0.0828 0.1362 0.3662
+RandAssign     -0.0139 54.5984   1.5819 0.0001 0.0015 0.0160
+GSA             0.1962  2.5941 879.7458 0.0824 0.1469 0.3248
+RandClust       0.1352  3.2183 699.9940 0.0257 0.0870 0.2245
+2026-03-10 01:21:46  INFO      
+── TEST ──────────────────────────────────────
+2026-03-10 01:21:46  INFO      
+            Silhouette      DB       CH    ARI    NMI   Dunn
+KMeans          0.2817  2.0754 253.6984 0.0939 0.1623 0.4280
+Agg             0.2311  2.2575 210.8614 0.0871 0.1511 0.4079
+GMM             0.1927  2.4785 216.1749 0.0952 0.1826 0.3567
+SBScan             NaN     NaN      NaN    NaN    NaN    NaN
+POS             0.2197  2.3437 227.3809 0.0860 0.1535 0.3921
+RandAssign     -0.0160 29.9642   0.8508 0.0006 0.0056 0.0324
+GSA             0.2106  2.5074 226.7108 0.0922 0.1668 0.3307
+RandClust       0.1704  2.5485 202.5717 0.0852 0.1607 0.3097
+2026-03-10 01:21:46  INFO      
+Generalisation gap  (train ARI − test ARI):
+2026-03-10 01:21:47  INFO        KMeans        train=0.0865  test=0.0939  gap=-0.0074  [good]
+2026-03-10 01:21:47  INFO        Agg           train=0.0824  test=0.0871  gap=-0.0046  [good]
+2026-03-10 01:21:48  INFO        GMM           train=0.0855  test=0.0952  gap=-0.0097  [good]
+2026-03-10 01:21:48  INFO        SBScan        train=nan  test=nan  gap=+nan  [acceptable]
+2026-03-10 01:21:48  INFO        POS           train=0.0828  test=0.0860  gap=-0.0032  [good]
+2026-03-10 01:21:49  INFO        RandAssign    train=0.0001  test=0.0006  gap=-0.0005  [good]
+2026-03-10 01:21:49  INFO        GSA           train=0.0824  test=0.0922  gap=-0.0098  [good]
+2026-03-10 01:21:50  INFO        RandClust     train=0.0257  test=0.0852  gap=-0.0595  [good]
+2026-03-10 01:22:26  INFO      
+── UNLABELED (unsupervised + ARI/NMI vs KMeans pseudo-GT) ──────────
+2026-03-10 01:22:26  INFO      
+            Silhouette       DB        CH   Dunn  ARI_vs_KM  NMI_vs_KM
+KMeans          0.1553   2.3113 3025.9176 0.3269     1.0000     1.0000
+Agg             0.2875   2.1745 2716.4303 0.3396     0.5802     0.5057
+GMM             0.2292   2.5710 2730.9595 0.2649     0.4630     0.4409
+SBScan             NaN      NaN       NaN    NaN        NaN        NaN
+POS             0.2338   1.9357 2259.3550 0.3530     0.5902     0.4532
+RandAssign     -0.0046 134.9532    0.7042 0.0070    -0.0000     0.0002
+GSA             0.1643   2.1859 2586.2525 0.3630     0.5739     0.4676
+RandClust       0.0864   3.3327 2941.0224 0.1586     0.1578     0.2696
+2026-03-10 01:22:26  INFO      
+[6b] Save unlabeled predictions
+2026-03-10 01:22:26  INFO        Unlabeled predictions saved: /Users/nadim/MyFiles/vscode/RollingWheels/Scripts/results_generations/moments_cosine_results_unlabeled_predictions.csv  (23674 windows)
+2026-03-10 01:22:26  INFO      
+[7] t-SNE + UMAP visualisation (labeled test split)
+2026-03-10 01:22:26  INFO        t-SNE [Test]...
+2026-03-10 01:22:30  INFO        UMAP [Test]...
+2026-03-10 01:22:38  INFO        Saved figures/clustering_moments_20260310_002257/18_tsne_test_clusters_20260310_002257.png
+2026-03-10 01:22:38  INFO        Saved figures/clustering_moments_20260310_002257/tsne_K-Means_20260310_002257.png
+2026-03-10 01:22:38  INFO        Saved figures/clustering_moments_20260310_002257/tsne_Agglomerative_20260310_002257.png
+2026-03-10 01:22:38  INFO        Saved figures/clustering_moments_20260310_002257/tsne_GMM_20260310_002257.png
+2026-03-10 01:22:38  INFO        Saved figures/clustering_moments_20260310_002257/tsne_SBScan_20260310_002257.png
+2026-03-10 01:22:38  INFO        Saved figures/clustering_moments_20260310_002257/tsne_PSO_20260310_002257.png
+2026-03-10 01:22:38  INFO        Saved figures/clustering_moments_20260310_002257/tsne_RandomAssign_20260310_002257.png
+2026-03-10 01:22:38  INFO        Saved figures/clustering_moments_20260310_002257/tsne_GravitationalSearch_20260310_002257.png
+2026-03-10 01:22:39  INFO        Saved figures/clustering_moments_20260310_002257/tsne_RandomClustering_20260310_002257.png
+2026-03-10 01:22:39  INFO        Saved figures/clustering_moments_20260310_002257/tsne_GroundTruth_20260310_002257.png
+2026-03-10 01:22:39  INFO        Saved figures/clustering_moments_20260310_002257/umap_K-Means_20260310_002257.png
+2026-03-10 01:22:39  INFO        Saved figures/clustering_moments_20260310_002257/umap_Agglomerative_20260310_002257.png
+2026-03-10 01:22:39  INFO        Saved figures/clustering_moments_20260310_002257/umap_GMM_20260310_002257.png
+2026-03-10 01:22:39  INFO        Saved figures/clustering_moments_20260310_002257/umap_SBScan_20260310_002257.png
+2026-03-10 01:22:39  INFO        Saved figures/clustering_moments_20260310_002257/umap_PSO_20260310_002257.png
+2026-03-10 01:22:39  INFO        Saved figures/clustering_moments_20260310_002257/umap_RandomAssign_20260310_002257.png
+2026-03-10 01:22:39  INFO        Saved figures/clustering_moments_20260310_002257/umap_GravitationalSearch_20260310_002257.png
+2026-03-10 01:22:39  INFO        Saved figures/clustering_moments_20260310_002257/umap_RandomClustering_20260310_002257.png
+2026-03-10 01:22:40  INFO        Saved figures/clustering_moments_20260310_002257/umap_GroundTruth_20260310_002257.png
+2026-03-10 01:22:40  INFO      
+  Fixed-K experiment  K=[3, 5, 7, 11]
+2026-03-10 01:22:43  INFO        Saved figures/clustering_moments_20260310_002257/20_fixed_k_tsne_20260310_002257.png
+2026-03-10 01:22:43  INFO      
+  Cluster quality — t-SNE projection:
+2026-03-10 01:22:43  INFO        K          Silhouette   Davies-Bouldin  Quality
+2026-03-10 01:22:43  INFO        ----------------------------------------------
+2026-03-10 01:22:43  INFO        K=3            0.3165           1.9300  Fair
+2026-03-10 01:22:43  INFO        K=5            0.2780           2.1031  Fair
+2026-03-10 01:22:43  INFO        K=7            0.1819           2.2949  Poor
+2026-03-10 01:22:43  INFO        K=11           0.1571           2.3509  Poor
+2026-03-10 01:22:48  INFO        Saved figures/clustering_moments_20260310_002257/20_fixed_k_umap_20260310_002257.png
+2026-03-10 01:22:48  INFO      
+  Cluster quality — UMAP projection:
+2026-03-10 01:22:48  INFO        K          Silhouette   Davies-Bouldin  Quality
+2026-03-10 01:22:48  INFO        ----------------------------------------------
+2026-03-10 01:22:48  INFO        K=3            0.3165           1.9300  Fair
+2026-03-10 01:22:48  INFO        K=5            0.2780           2.1031  Fair
+2026-03-10 01:22:48  INFO        K=7            0.1819           2.2949  Poor
+2026-03-10 01:22:48  INFO        K=11           0.1571           2.3509  Poor
+2026-03-10 01:22:48  INFO      
+[9] Unlabeled visualisation (23674 windows)
+2026-03-10 01:22:48  INFO        t-SNE [Unlabeled]...
+2026-03-10 01:24:08  INFO        UMAP [Unlabeled]...
+2026-03-10 01:24:25  INFO        Saved figures/clustering_moments_20260310_002257/tsne_unlabeled_clusters_20260310_002257.png
+2026-03-10 01:24:25  INFO        Saved figures/clustering_moments_20260310_002257/tsne_unlabeled_K-Means_20260310_002257.png
+2026-03-10 01:24:26  INFO        Saved figures/clustering_moments_20260310_002257/tsne_unlabeled_Agglomerative_20260310_002257.png
+2026-03-10 01:24:26  INFO        Saved figures/clustering_moments_20260310_002257/tsne_unlabeled_GMM_20260310_002257.png
+2026-03-10 01:24:26  INFO        Saved figures/clustering_moments_20260310_002257/tsne_unlabeled_SBScan_20260310_002257.png
+2026-03-10 01:24:26  INFO        Saved figures/clustering_moments_20260310_002257/tsne_unlabeled_PSO_20260310_002257.png
+2026-03-10 01:24:26  INFO        Saved figures/clustering_moments_20260310_002257/tsne_unlabeled_RandomAssign_20260310_002257.png
+2026-03-10 01:24:26  INFO        Saved figures/clustering_moments_20260310_002257/tsne_unlabeled_GravitationalSearch_20260310_002257.png
+2026-03-10 01:24:27  INFO        Saved figures/clustering_moments_20260310_002257/tsne_unlabeled_RandomClustering_20260310_002257.png
+2026-03-10 01:24:28  INFO        Saved figures/clustering_moments_20260310_002257/umap_unlabeled_clusters_20260310_002257.png
+2026-03-10 01:24:28  INFO        Saved figures/clustering_moments_20260310_002257/umap_unlabeled_K-Means_20260310_002257.png
+2026-03-10 01:24:28  INFO        Saved figures/clustering_moments_20260310_002257/umap_unlabeled_Agglomerative_20260310_002257.png
+2026-03-10 01:24:28  INFO        Saved figures/clustering_moments_20260310_002257/umap_unlabeled_GMM_20260310_002257.png
+2026-03-10 01:24:28  INFO        Saved figures/clustering_moments_20260310_002257/umap_unlabeled_SBScan_20260310_002257.png
+2026-03-10 01:24:28  INFO        Saved figures/clustering_moments_20260310_002257/umap_unlabeled_PSO_20260310_002257.png
+2026-03-10 01:24:29  INFO        Saved figures/clustering_moments_20260310_002257/umap_unlabeled_RandomAssign_20260310_002257.png
+2026-03-10 01:24:29  INFO        Saved figures/clustering_moments_20260310_002257/umap_unlabeled_GravitationalSearch_20260310_002257.png
+2026-03-10 01:24:29  INFO        Saved figures/clustering_moments_20260310_002257/umap_unlabeled_RandomClustering_20260310_002257.png
+2026-03-10 01:24:29  INFO      
+  Fixed-K experiment on unlabeled data
+2026-03-10 01:25:04  INFO        Saved figures/clustering_moments_20260310_002257/fixed_k_tsne_unlabeled_20260310_002257.png
+2026-03-10 01:25:04  INFO        K          Silhouette   Davies-Bouldin  Quality
+2026-03-10 01:25:04  INFO        ----------------------------------------------
+2026-03-10 01:25:04  INFO        K=3            0.4311           1.9042  Good
+2026-03-10 01:25:04  INFO        K=5            0.3381           1.8609  Fair
+2026-03-10 01:25:04  INFO        K=7            0.2235           2.1233  Fair
+2026-03-10 01:25:04  INFO        K=11           0.1574           2.2879  Poor
+2026-03-10 01:25:38  INFO        Saved figures/clustering_moments_20260310_002257/fixed_k_umap_unlabeled_20260310_002257.png
+2026-03-10 01:25:38  INFO        K          Silhouette   Davies-Bouldin  Quality
+2026-03-10 01:25:38  INFO        ----------------------------------------------
+2026-03-10 01:25:38  INFO        K=3            0.4311           1.9042  Good
+2026-03-10 01:25:38  INFO        K=5            0.3381           1.8609  Fair
+2026-03-10 01:25:38  INFO        K=7            0.2235           2.1233  Fair
+2026-03-10 01:25:38  INFO        K=11           0.1574           2.2879  Poor
+2026-03-10 01:25:38  INFO      
+Done!  All plots saved to: /Users/nadim/MyFiles/vscode/RollingWheels/Scripts/results_generations/figures/clustering_moments_20260310_002257
