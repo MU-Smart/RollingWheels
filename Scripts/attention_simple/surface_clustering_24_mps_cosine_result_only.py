@@ -93,7 +93,7 @@ CONFIG = {
 
     # VibClustNet (script-24 architecture)
     "vcn_embedding_dim"      : 128,
-    "vcn_checkpoint"         : Path("vibclustnet_best_24.pth"),
+    "vcn_checkpoint"         : Path("25p_weight_vibclustnet_best_24.pth"),
     "vcn_cls_weight"         : 5.0,
 
     # Output directories
