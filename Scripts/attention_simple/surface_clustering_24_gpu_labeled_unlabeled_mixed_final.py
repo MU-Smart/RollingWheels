@@ -97,7 +97,7 @@ CONFIG = {
     "vcn_patience"       : 50,
     "vcn_embedding_dim"  : 128,
     "vcn_checkpoint"     : Path("vibclustnet_best_24.pth"),
-    "vcn_cls_weight"     : 1.0,    # weight for classification auxiliary loss
+    "vcn_cls_weight"     : 0.5,    # weight for classification auxiliary loss
 
     # Output directories
     "figures_dir"        : Path("figures"),

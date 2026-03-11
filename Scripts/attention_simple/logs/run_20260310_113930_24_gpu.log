@@ -1,0 +1,58 @@
+2026-03-10 11:39:30  INFO      Log file: /home/mahmudm2/codebase/RollingWheels/Scripts/attention_simple/logs/run_20260310_113930_24_gpu.log
+2026-03-10 11:39:30  INFO      Device: cuda
+2026-03-10 11:39:30  INFO      Run timestamp: 20260310_113930
+2026-03-10 11:39:30  INFO      Figures dir  : /home/mahmudm2/codebase/RollingWheels/Scripts/attention_simple/figures
+2026-03-10 11:39:30  INFO      Models dir   : /home/mahmudm2/codebase/RollingWheels/Scripts/attention_simple/models
+2026-03-10 11:39:30  INFO      
+[0] Surface names
+2026-03-10 11:39:30  INFO            1 -> Paving Blocks (Smooth) (Red)
+2026-03-10 11:39:30  INFO            2 -> Concrete Sidewalk
+2026-03-10 11:39:30  INFO            3 -> Smooth Brick (High Street)
+2026-03-10 11:39:30  INFO            4 -> Rough brick (High Street)
+2026-03-10 11:39:30  INFO            5 -> Asphalt / Tar surface
+2026-03-10 11:39:30  INFO            6 -> Indoor Carpet (low-pile)
+2026-03-10 11:39:30  INFO            7 -> Indoor Linoleum
+2026-03-10 11:39:30  INFO            8 -> Indoor Tile
+2026-03-10 11:39:30  INFO            9 -> Curb Up
+2026-03-10 11:39:30  INFO           10 -> Curb Down
+2026-03-10 11:39:30  INFO           11 -> Rectangular Paving Tiles
+2026-03-10 11:39:30  INFO           12 -> Paving Blocks (Rough)
+2026-03-10 11:39:30  INFO      
+[1] Load windowed data (labeled + unlabeled)
+2026-03-10 11:39:30  INFO        Loading: ../../Datasets/ExtractedFeatures/labeled_accelerometer_raw_windows.csv
+2026-03-10 11:39:34  INFO        Rows: 8153088  Windows: 7962
+2026-03-10 11:39:38  INFO        Labeled windows: 7962  Classes: [0, 1, 2, 3, 4, 6, 7]
+2026-03-10 11:39:38  INFO        Loading: ../../Datasets/ExtractedFeatures/unlabeled_accelerometer_raw_windows.csv
+2026-03-10 11:39:49  INFO        Rows: 24242176  Windows: 23674
+2026-03-10 11:39:58  INFO        Unlabeled windows: 23674
+2026-03-10 11:39:58  INFO        Stratified split (labeled only):
+2026-03-10 11:39:58  INFO          Surface 0                     :  1109 train   277 test
+2026-03-10 11:39:58  INFO          Paving Blocks (Smooth) (Red)  :   671 train   167 test
+2026-03-10 11:39:58  INFO          Concrete Sidewalk             :   905 train   226 test
+2026-03-10 11:39:58  INFO          Smooth Brick (High Street)    :  1719 train   429 test
+2026-03-10 11:39:58  INFO          Rough brick (High Street)     :   958 train   239 test
+2026-03-10 11:39:58  INFO          Indoor Carpet (low-pile)      :   454 train   113 test
+2026-03-10 11:39:58  INFO          Indoor Linoleum               :   556 train   139 test
+2026-03-10 11:39:58  INFO        Training set: 6372 labeled + 23674 unlabeled = 30046 total
+2026-03-10 11:39:58  INFO      
+[2] Super-class distribution (labeled train):
+2026-03-10 11:39:58  INFO          Paving Blocks (Smooth) / Indoor Tile: 1109 windows
+2026-03-10 11:39:58  INFO          Concrete Sidewalk             : 671 windows
+2026-03-10 11:39:58  INFO          Brick (Smooth + Rough)        : 905 windows
+2026-03-10 11:39:58  INFO          Asphalt + Indoor Carpet       : 1719 windows
+2026-03-10 11:39:58  INFO          Indoor Linoleum               : 958 windows
+2026-03-10 11:39:58  INFO          Curb (Up + Down)              : 454 windows
+2026-03-10 11:39:58  INFO          Rect. Tiles / Paving Blocks (Rough): 556 windows
+2026-03-10 11:39:58  INFO      
+[3] Train VibClustNet autoencoder
+2026-03-10 11:40:01  INFO        Parameters: 513,020
+2026-03-10 11:41:17  INFO        [VCN]   1/150  rec=0.0096  cls=1.4057  val_rec=0.0133  val_cls=1.3191  lr=1.00e-03 *
+2026-03-10 11:42:28  INFO        [VCN]   2/150  rec=0.0061  cls=0.9910  val_rec=0.0104  val_cls=0.8191  lr=1.00e-03 *
+2026-03-10 11:43:39  INFO        [VCN]   3/150  rec=0.0051  cls=0.8110  val_rec=0.0086  val_cls=0.7250  lr=1.00e-03 *
+2026-03-10 11:44:49  INFO        [VCN]   4/150  rec=0.0049  cls=0.6971  val_rec=0.0137  val_cls=0.7436  lr=1.00e-03
+2026-03-10 11:46:00  INFO        [VCN]   5/150  rec=0.0047  cls=0.6154  val_rec=0.0089  val_cls=0.5997  lr=1.00e-03 *
+2026-03-10 11:47:10  INFO        [VCN]   6/150  rec=0.0047  cls=0.5544  val_rec=0.0104  val_cls=0.5330  lr=1.00e-03 *
+2026-03-10 11:48:21  INFO        [VCN]   7/150  rec=0.0048  cls=0.5016  val_rec=0.0089  val_cls=0.4240  lr=1.00e-03 *
+2026-03-10 11:49:31  INFO        [VCN]   8/150  rec=0.0049  cls=0.4357  val_rec=0.0078  val_cls=0.4089  lr=1.00e-03 *
+2026-03-10 11:50:42  INFO        [VCN]   9/150  rec=0.0049  cls=0.3818  val_rec=0.0088  val_cls=0.4425  lr=1.00e-03
+2026-03-10 11:51:53  INFO        [VCN]  10/150  rec=0.0051  cls=0.3373  val_rec=0.0079  val_cls=0.3728  lr=1.00e-03 *
