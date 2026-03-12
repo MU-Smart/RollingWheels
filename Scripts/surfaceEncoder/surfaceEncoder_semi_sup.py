@@ -37,6 +37,7 @@ from sklearn.manifold import TSNE
 from sklearn.metrics import (silhouette_score, davies_bouldin_score,
                              calinski_harabasz_score,
                              adjusted_rand_score, normalized_mutual_info_score)
+from sklearn.metrics.pairwise import cosine_distances
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
 RUN_TS = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -596,6 +597,7 @@ def train_SurfaceEncoder(model, train_loader, val_loader, cfg, device,
                     for i in range(0, len(X_labeled), 256)
                 ])
             k_tmp  = len(np.unique(y_labeled))
+            embs   = normalize(embs, norm="l2")
             km_tmp = KMeans(n_clusters=k_tmp, random_state=42, n_init=5).fit_predict(embs)
             nmi    = normalized_mutual_info_score(y_labeled, km_tmp)
             logger.info(f"    NMI (labeled, K={k_tmp}): {nmi:.4f}")
@@ -646,7 +648,7 @@ class SBScanClustering:
 
     def fit(self, X):
         k        = self.min_samples
-        nbrs     = NearestNeighbors(n_neighbors=k).fit(X)
+        nbrs     = NearestNeighbors(n_neighbors=k, metric="cosine").fit(X)
         dists, _ = nbrs.kneighbors(X)
         k_dists  = np.sort(dists[:, -1])          # ascending
         n        = len(k_dists)
@@ -660,7 +662,7 @@ class SBScanClustering:
         if self.eps_ < 1e-6:                       # degenerate: use median
             self.eps_ = float(np.median(k_dists))
         logger.info(f"    SBScan auto-eps={self.eps_:.4f}  (knee idx={knee_idx}/{n})")
-        db = DBSCAN(eps=self.eps_, min_samples=self.min_samples).fit(X)
+        db = DBSCAN(eps=self.eps_, min_samples=self.min_samples, metric="cosine").fit(X)
         self.labels_ = db.labels_
         mask    = self.labels_ != -1
         n_valid = int(mask.sum())
@@ -668,7 +670,7 @@ class SBScanClustering:
         logger.info(f"    SBScan: {n_cls} clusters, {n_valid} non-noise / {n} total")
         if n_valid > 1 and n_cls > 1:
             self._knn_clf = KNeighborsClassifier(
-                n_neighbors=min(5, n_valid)
+                n_neighbors=min(5, n_valid), metric="cosine"
             ).fit(X[mask], self.labels_[mask])
         return self
 
@@ -831,9 +833,10 @@ class RandomClustering:
 # ── Clustering ────────────────────────────────────────────────────────────────
 def best_k(pca_emb, k_min, k_max, figures_dir: Path):
     scores = {}
+    pca_emb_n = normalize(pca_emb, norm="l2")
     for k in range(k_min, k_max+1):
-        lbl = KMeans(n_clusters=k, random_state=42, n_init=20).fit_predict(pca_emb)
-        scores[k] = silhouette_score(pca_emb, lbl)
+        lbl = KMeans(n_clusters=k, random_state=42, n_init=20).fit_predict(pca_emb_n)
+        scores[k] = silhouette_score(pca_emb_n, lbl, metric="cosine")
         logger.info(f"    K={k:2d}  sil={scores[k]:.4f}")
     bk = max(scores, key=scores.get)
     logger.info(f"  Best K={bk}  sil={scores[bk]:.4f}")
@@ -855,14 +858,15 @@ def _fixed_k_grid(pca_emb, proj_coords, proj_name, fname, ks):
     """2×2 grid of KMeans at fixed K values, coloured by cluster only."""
     assert len(ks) == 4, "Need exactly 4 K values for 2×2 grid"
     rows = {}
+    pca_emb_n = normalize(pca_emb, norm="l2")
     fig, axes = plt.subplots(2, 2, figsize=(16, 12))
     fig.suptitle(f"Fixed-K experiment — {proj_name} (test split)",
                  fontsize=13, fontweight="bold")
     for ax, k in zip(axes.flat, ks):
-        lbl = KMeans(n_clusters=k, random_state=42, n_init=20).fit_predict(pca_emb)
+        lbl = KMeans(n_clusters=k, random_state=42, n_init=20).fit_predict(pca_emb_n)
         rows[f"K={k}"] = dict(
-            Silhouette = silhouette_score(pca_emb, lbl),
-            DB         = davies_bouldin_score(pca_emb, lbl),
+            Silhouette = silhouette_score(pca_emb_n, lbl, metric="cosine"),
+            DB         = davies_bouldin_score(pca_emb_n, lbl),
         )
         for i, cid in enumerate(sorted(set(lbl))):
             m = lbl == cid
@@ -898,14 +902,18 @@ def _print_quality(rows):
         logger.info(f"  {k:<8} {sil:>12.4f} {db:>16.4f}  {q}")
 
 def cluster_all(tr_norm, tr_pca, te_norm, te_pca, k, xu_norm=None, xu_pca=None):
-    km      = KMeans(n_clusters=k, random_state=42, n_init=20).fit(tr_pca)
+    tr_pca_n = normalize(tr_pca, norm="l2")
+    te_pca_n = normalize(te_pca, norm="l2")
+    xu_pca_n = normalize(xu_pca, norm="l2") if xu_pca is not None and len(xu_pca) > 0 else xu_pca
+
+    km      = KMeans(n_clusters=k, random_state=42, n_init=20).fit(tr_pca_n)
     agg     = AgglomerativeClustering(n_clusters=k, metric="cosine", linkage="average").fit(tr_norm)
-    gmm     = GaussianMixture(n_components=k, random_state=42, n_init=5).fit(tr_pca)
-    sbscan  = SBScanClustering(n_clusters_hint=k, min_samples=5).fit(tr_pca)
-    pos     = PSOClustering(n_clusters=k, seed=42).fit(tr_pca)
-    rand_a  = RandomAssignClustering(n_clusters=k, seed=42).fit(tr_pca)
-    gsa     = GravitationalSearchClustering(n_clusters=k, seed=42).fit(tr_pca)
-    rand_c  = RandomClustering(n_clusters=k, seed=42).fit(tr_pca)
+    gmm     = GaussianMixture(n_components=k, random_state=42, n_init=5).fit(tr_pca_n)
+    sbscan  = SBScanClustering(n_clusters_hint=k, min_samples=5).fit(tr_pca_n)
+    pos     = PSOClustering(n_clusters=k, seed=42).fit(tr_pca_n)
+    rand_a  = RandomAssignClustering(n_clusters=k, seed=42).fit(tr_pca_n)
+    gsa     = GravitationalSearchClustering(n_clusters=k, seed=42).fit(tr_pca_n)
+    rand_c  = RandomClustering(n_clusters=k, seed=42).fit(tr_pca_n)
 
     # Agg prediction: nearest-centroid in cosine space
     agg_centroids = np.vstack([tr_norm[agg.labels_ == c].mean(axis=0)
@@ -918,7 +926,7 @@ def cluster_all(tr_norm, tr_pca, te_norm, te_pca, k, xu_norm=None, xu_pca=None):
     tr_pred = {
         "kmeans"     : km.labels_,
         "agg"        : agg.labels_,
-        "gmm"        : gmm.predict(tr_pca),
+        "gmm"        : gmm.predict(tr_pca_n),
         "sbscan"     : sbscan.labels_,
         "pos"        : pos.labels_,
         "rand_assign": rand_a.labels_,
@@ -926,26 +934,26 @@ def cluster_all(tr_norm, tr_pca, te_norm, te_pca, k, xu_norm=None, xu_pca=None):
         "rand_clust" : rand_c.labels_,
     }
     te_pred = {
-        "kmeans"     : km.predict(te_pca),
+        "kmeans"     : km.predict(te_pca_n),
         "agg"        : _agg_predict(te_norm),
-        "gmm"        : gmm.predict(te_pca),
-        "sbscan"     : sbscan.predict(te_pca),
-        "pos"        : pos.predict(te_pca),
-        "rand_assign": RandomAssignClustering(n_clusters=k, seed=99).fit(te_pca).labels_,
-        "gsa"        : gsa.predict(te_pca),
-        "rand_clust" : RandomClustering(n_clusters=k, seed=99).fit(te_pca).labels_,
+        "gmm"        : gmm.predict(te_pca_n),
+        "sbscan"     : sbscan.predict(te_pca_n),
+        "pos"        : pos.predict(te_pca_n),
+        "rand_assign": RandomAssignClustering(n_clusters=k, seed=99).fit(te_pca_n).labels_,
+        "gsa"        : gsa.predict(te_pca_n),
+        "rand_clust" : RandomClustering(n_clusters=k, seed=99).fit(te_pca_n).labels_,
     }
     xu_pred = None
-    if xu_norm is not None and xu_pca is not None and len(xu_pca) > 0:
+    if xu_norm is not None and xu_pca_n is not None and len(xu_pca_n) > 0:
         xu_pred = {
-            "kmeans"     : km.predict(xu_pca),
+            "kmeans"     : km.predict(xu_pca_n),
             "agg"        : _agg_predict(xu_norm),
-            "gmm"        : gmm.predict(xu_pca),
-            "sbscan"     : sbscan.predict(xu_pca),
-            "pos"        : pos.predict(xu_pca),
-            "rand_assign": RandomAssignClustering(n_clusters=k, seed=77).fit(xu_pca).labels_,
-            "gsa"        : gsa.predict(xu_pca),
-            "rand_clust" : RandomClustering(n_clusters=k, seed=77).fit(xu_pca).labels_,
+            "gmm"        : gmm.predict(xu_pca_n),
+            "sbscan"     : sbscan.predict(xu_pca_n),
+            "pos"        : pos.predict(xu_pca_n),
+            "rand_assign": RandomAssignClustering(n_clusters=k, seed=77).fit(xu_pca_n).labels_,
+            "gsa"        : gsa.predict(xu_pca_n),
+            "rand_clust" : RandomClustering(n_clusters=k, seed=77).fit(xu_pca_n).labels_,
         }
     return tr_pred, te_pred, xu_pred, km
 
@@ -958,21 +966,25 @@ def dunn_index(X: np.ndarray, labels: np.ndarray) -> float:
     unique = np.unique(labels[labels != -1])
     if len(unique) < 2:
         return np.nan
-    clusters  = [X[labels == lbl] for lbl in unique]
-    centroids = np.array([c.mean(axis=0) for c in clusters])
-    # Inter-cluster: minimum distance between any pair of centroids
+    clusters    = [X[labels == lbl] for lbl in unique]
+    centroids   = np.array([c.mean(axis=0) for c in clusters])
+    centroids_n = normalize(centroids, norm="l2")
+    # Inter-cluster: minimum cosine distance between any pair of centroids
     min_inter = np.inf
-    for i in range(len(centroids)):
-        for j in range(i + 1, len(centroids)):
-            d = np.linalg.norm(centroids[i] - centroids[j])
+    for i in range(len(centroids_n)):
+        for j in range(i + 1, len(centroids_n)):
+            d = float(cosine_distances(centroids_n[[i]], centroids_n[[j]])[0, 0])
             if d < min_inter:
                 min_inter = d
-    # Intra-cluster: max mean-diameter (2 × avg distance from centroid)
-    max_intra = max(
-        (np.linalg.norm(c - cent, axis=1).mean() * 2
-         for c, cent in zip(clusters, centroids) if len(c) > 0),
-        default=0.0,
-    )
+    # Intra-cluster: max mean-diameter (2 × avg cosine distance from centroid)
+    max_intra = 0.0
+    for c, cent in zip(clusters, centroids):
+        if len(c) == 0:
+            continue
+        d = cosine_distances(normalize(c, norm="l2"),
+                             normalize(cent.reshape(1, -1), norm="l2")).mean() * 2
+        if d > max_intra:
+            max_intra = d
     return np.nan if max_intra < 1e-10 else float(min_inter / max_intra)
 
 
@@ -996,14 +1008,14 @@ def evaluate(emb, pred, gt, metric="euclidean"):
 
 _METHOD_CFG = {
     # display-name : (dict-key, sklearn-metric, use-pca)
-    "KMeans"      : ("kmeans",      "euclidean", True),
-    "Agg"         : ("agg",         "cosine",    False),
-    "GMM"         : ("gmm",         "euclidean", True),
-    "SBScan"      : ("sbscan",      "euclidean", True),
-    "POS"         : ("pos",         "euclidean", True),
-    "RandAssign"  : ("rand_assign", "euclidean", True),
-    "GSA"         : ("gsa",         "euclidean", True),
-    "RandClust"   : ("rand_clust",  "euclidean", True),
+    "KMeans"      : ("kmeans",      "cosine", True),
+    "Agg"         : ("agg",         "cosine", True),
+    "GMM"         : ("gmm",         "cosine", True),
+    "SBScan"      : ("sbscan",      "cosine", True),
+    "POS"         : ("pos",         "cosine", True),
+    "RandAssign"  : ("rand_assign", "cosine", True),
+    "GSA"         : ("gsa",         "cosine", True),
+    "RandClust"   : ("rand_clust",  "cosine", True),
 }
 
 def evaluate_unsupervised(emb, pred, pseudo_gt=None, metric="euclidean"):
